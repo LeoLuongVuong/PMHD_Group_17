@@ -3,11 +3,13 @@
 
 library(tidyverse)
 library(table1)
+library(dplyr)
+library(ggplot2)
 
 # Make plots -------------------------------------------------------------------
 
 # Import the dummy data
-DummyData <- read.csv("1st presentation/Dummy data visualisation/DummyData.csv",
+DummyData <- read.csv("1st_presentation/dummy_data_visualisation/DummyData.csv",
                       quote = "", header = TRUE, sep = ";", check.names = FALSE)
 # https://stackoverflow.com/questions/10441437/why-am-i-getting-x-in-my-column-names-when-reading-a-data-frame
 
