@@ -3,8 +3,6 @@
 
 library(tidyverse)
 library(table1)
-library(dplyr)
-library(ggplot2)
 
 # Make plots -------------------------------------------------------------------
 
@@ -97,7 +95,7 @@ Box_plot_by_garden <- DummyData %>%
   labs(fill = "Garden")
 
 # Save the plots
-ggsave("Box_plot_total.jpeg", Box_plot_total, width = 9, height = 5.06, dpi = 300, unit = "cm")
+ggsave("Box_plot_total.jpeg", Box_plot_total, width = 13, height = 7, dpi = 300, unit = "cm")
 ggsave("Box_plot_by_species.jpeg", Box_plot_by_species, width = 18, height = 10.13, dpi = 300, unit = "cm")
 ggsave("Box_plot_by_garden.jpeg", Box_plot_by_garden, width = 18, height = 10.13, dpi = 300, unit = "cm")
 
