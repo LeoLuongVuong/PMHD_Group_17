@@ -15,3 +15,7 @@ power.t.test(n = , delta = 1, sig.level = 0.05, sd = 4, power = 0.9, type = "two
 # The total sample size is the product of 1 compound with 15
 sample_size <- 199 * 15
 
+# Adjust significant level, correct for multiple testing
+
+power.t.test(n = , delta = 1, sig.level = 0.05/14, sd = 4, power = 0.8, type = "two.sample",
+             alternative = "one.sided", strict = TRUE) # 400
