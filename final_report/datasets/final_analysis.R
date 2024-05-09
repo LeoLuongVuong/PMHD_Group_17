@@ -46,6 +46,13 @@ strata <- non_gaussian_data %>%
   summarise(n = n()) 
 View(strata)
 
+# Check crossed design - https://lme4.r-forge.r-project.org/book/Ch2.pdf
+
+# Crossed means we have at least one observation for each combination of a level
+# of each fator
+xtabs(~ species + rater + subplotID, non_gaussian_data)
+# unbalanced study design
+
 # Question c: Explore/Visualize T0 up to T20 with a multivariate method -------
 
 # First, convert gaussian_data to long format
@@ -143,4 +150,6 @@ biplot <- fviz_pca_var(PCA_T_0_20, col.var = "black")
 # save the plots
 ggsave("scree_plot.svg", plot = scree_plot, width = 19, height = 12.5, units = "cm")
 ggsave("biplot.svg", plot = biplot, width = 19, height = 12.5, units = "cm")
+
+
 
