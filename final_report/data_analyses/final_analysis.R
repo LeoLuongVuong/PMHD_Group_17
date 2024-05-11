@@ -20,9 +20,8 @@ library("factoextra")
 # Question a: binary outcome for non-gaussian data --------------------------
 
 # Import the data
-setwd("./final_report/datasets")
+setwd("./final_report/data_analyses")
 non_gaussian_data <- read.csv("count_data_G17.csv")
-gaussian_data <- read.csv("gaussian_data_G17.csv")
 
 # Note
 
@@ -123,7 +122,16 @@ gee_full <- geeglm(fresh ~ compound*day + species + subplotID + rater,
 summary(gee_full)
 anova(gee_full)
 
-geepack::QIC(gee_full) #36034     
+geepack::QIC(gee_full) #36034  
+
+# remove interaction term
+gee_no_interaction <- geeglm(fresh ~ compound + day + species + subplotID + rater, 
+                   data = binary_outcome, 
+                   id = flowerID, 
+                   family = binomial, 
+                   corstr = "exchangeable")
+
+geepack::QIC(gee_no_interaction)  # 36039.7 # significantly worse
 
 # remove subplotID
 gee_no_subplotID <- geeglm(fresh ~ compound*day + species + rater, 
@@ -216,7 +224,16 @@ glmm_no_garden <- glmer(fresh ~ compound*day + rater + species + (1|flowerID) + 
                         data = binary_outcome, nAGQ = 0)
 summary(glmm_no_garden)
 
+
 AICc(glmm_no_garden) # 15392 # can be removed
+
+# remove interaction
+
+glmm_no_interaction <- glmer(fresh ~ compound + day + rater + species + (1|flowerID) + (1|subplotID),
+                             family = binomial(link = "logit"),
+                             data = binary_outcome, nAGQ = 0)
+
+AICc(glmm_no_interaction) # 15397 # can't be removed
 
 # remove rater
 
@@ -248,6 +265,14 @@ AICc(glmm_no_garden_slope) # 15524 # shouldn't be added
 # Conclusion: glmm_no_garden is the best model
 
 # Question c: Explore/Visualize T0 up to T20 with a multivariate method -------
+
+# Import the dataset
+
+setwd("./final_report/data_analyses")
+gaussian_data <- read.csv("gaussian_data_G17.csv")
+# go back 2 levels to the original dr
+Path = getwd()
+setwd(dirname(dirname(Path)))
 
 # First, convert gaussian_data to long format
 
@@ -298,7 +323,7 @@ EDA_c <- ggplot(gaussian_long, aes(x = Day, y = Width, group = Flower_index)) +
   geom_line() +
   facet_wrap(~ Compound, ncol = 3, labeller = label_both) +
   theme_minimal() +
-  ylab("Width (cm)") +
+  ylab("Flower width (cm)") +
   theme(plot.title = element_text(hjust = 0.5, size = 8, face = "bold", family = "sans"), 
         strip.text.x = element_text(hjust = 0.5, size = 8, family = "sans"),
         axis.title = element_text(size = 7, family = "sans"),
@@ -306,7 +331,112 @@ EDA_c <- ggplot(gaussian_long, aes(x = Day, y = Width, group = Flower_index)) +
         legend.position = "none",
         panel.grid.minor = element_blank())
 
-ggsave("EDA_c.svg", plot = EDA_c, width = 19, height = 9, units = "cm")
+# export plots
+setwd("./final_report/data_analyses/eda_plots")
+ggsave("EDA_c.svg", plot = EDA_c, width = 19, height = 19, units = "cm")
+
+### Ermi's plot ---------------------------------------------------------------
+
+### Plots ###
+
+## Aggregated Datasets by Compound, Type, Garden, Subplot ## 
+gaus_Comp <- gaussian_long %>%
+  group_by(Day, Compound) %>%
+  summarise(
+    MeanWidth = mean(Width, na.rm = T),
+    SDWidth   = sd(Width, na.rm = T),
+    N         = n()
+  )
+gaus_Comp$MeanWidth <- round(gaus_Comp$MeanWidth, 2)
+gaus_Comp$SDWidth <- round(gaus_Comp$SDWidth, 2)
+
+gaus_Type <- gaussian_long %>%
+  group_by(Day, Type) %>%
+  summarise(
+    MeanWidth = mean(Width, na.rm = T),
+    SDWidth   = sd(Width, na.rm = T),
+    N         = n()
+  )
+
+gaus_Garden <- gaussian_long %>%
+  group_by(Day, Garden) %>%
+  summarise(
+    MeanWidth = mean(Width, na.rm = T),
+    SDWidth   = sd(Width, na.rm = T),
+    N         = n()
+  )
+
+gaus_Subplot <- gaussian_long %>%
+  group_by(Day, Subplot) %>%
+  summarise(
+    MeanWidth = mean(Width, na.rm = T),
+    SDWidth   = sd(Width, na.rm = T),
+    N         = n()
+  )
+
+# Flower Width by Compound for T0-T20
+ggplot(data = gaus_Comp) + 
+  geom_line(mapping = aes(x = time, group = Compound, y = MeanWidth))
+## with Colours
+flowerwidth_compound <- ggplot(data = gaus_Comp, aes(x = Day, y = MeanWidth, group = Compound)) + 
+  geom_line(aes(col = Compound), size = 0.3) +
+  geom_point(aes(col = Compound), size = 1.9) +
+  theme_minimal() +
+  ylab("Mean flower width (cm)") +
+  theme(axis.title = element_text(size = 7, family = "sans"),
+        axis.text = element_text(size = 7, family = "sans"),
+        legend.title = element_text(size = 6, family = "sans"),
+        legend.text = element_text(size = 6, family = "sans"),
+        panel.grid.minor = element_blank())
+ggsave("flowerwidth_compound.svg", plot = flowerwidth_compound, width = 19, height = 19, units = "cm")
+  
+# --> Compound 6 hast the smallest Width (considered the freshest at T20)
+
+## Flower Width by Type for T0-T20
+flowerwidth_type <- ggplot(data = gaus_Type, aes(x = Day, y = MeanWidth, group = Type)) + 
+  geom_line(aes(col = Type), size = 0.3) +
+  geom_point(aes(col = Type), size = 1.9) +
+  theme_minimal() +
+  ylab("Mean flower width (cm)") +
+  theme(axis.title = element_text(size = 7, family = "sans"),
+        axis.text = element_text(size = 7, family = "sans"),
+        legend.title = element_text(size = 6, family = "sans"),
+        legend.text = element_text(size = 6, family = "sans"),
+        panel.grid.minor = element_blank())
+ggsave("flowerwidth_type.svg", plot = flowerwidth_type, width = 19, height = 9, units = "cm")
+# --> species 2 withers faster than species 1
+
+## Flower Width by Garden for T0-T20
+flowerwidth_garden <- ggplot(data = gaus_Garden, aes(x = Day, y = MeanWidth, group = Garden)) + 
+  geom_line(aes(col = Garden), size = 0.3) +
+  geom_point(aes(col = Garden), size = 1.9) +
+  theme_minimal() +
+  ylab("Mean flower width (cm)") +
+  theme(axis.title = element_text(size = 7, family = "sans"),
+        axis.text = element_text(size = 7, family = "sans"),
+        legend.title = element_text(size = 6, family = "sans"),
+        legend.text = element_text(size = 6, family = "sans"),
+        panel.grid.minor = element_blank())
+ggsave("flowerwidth_garden.svg", plot = flowerwidth_garden, width = 19, height = 9, units = "cm")
+  
+# No descriptive difference in Flower Width at any time point, similar pattern
+
+## Flower Width by Subplot for T0-T20
+flowerwidth_subplot <- ggplot(data = gaus_Subplot, aes(x = Day, y = MeanWidth, group = Subplot)) + 
+  geom_line(aes(col = Subplot), size = 0.3) +
+  geom_point(aes(col = Subplot), size = 1.9) +
+  theme_minimal() +
+  ylab("Mean flower width (cm)") +
+  theme(axis.title = element_text(size = 7, family = "sans"),
+        axis.text = element_text(size = 7, family = "sans"),
+        legend.title = element_text(size = 6, family = "sans"),
+        legend.text = element_text(size = 6, family = "sans"),
+        panel.grid.minor = element_blank())
+ggsave("flowerwidth_subplot.svg", plot = flowerwidth_subplot, width = 19, height = 19, units = "cm")
+
+# go back 3 levels to the original dr
+Path = getwd()
+setwd(dirname(dirname(dirname(Path))))
 
 ## PCA ---------------------------------------------------------------
 
@@ -345,5 +475,146 @@ biplot <- fviz_pca_var(PCA_T_0_20, col.var = "black")
 ggsave("scree_plot.svg", plot = scree_plot, width = 19, height = 12.5, units = "cm")
 ggsave("biplot.svg", plot = biplot, width = 19, height = 12.5, units = "cm")
 
+# Henry's code ---------------------------------------------------------------
+
+#Question b
+gaussianData <- read.csv("C:/Users/Moi/Downloads/gaussian_data_G17.csv")
+gaussianLong <- melt(gaussianData, id.vars = c("Flower_index", "Compound", "Rater", "Type", "Garden", "Subplot"), variable.name = "Day", value.name = "Width")
+gaussianLong$Day <- as.numeric(gsub("T_", "", gaussianLong$Day))
+gaussianLong$Compound <- as.factor(gaussianLong$Compound)
+gaussianLong$Type <- as.factor(gaussianLong$Type)
+gaussianLong$Subplot <- as.factor(gaussianLong$Subplot)
+gaussianLong$Rater <- as.factor(gaussianLong$Rater)
+gaussianLong$Flower_index <- as.factor(gaussianLong$Flower_index)
+# Handling missing data using complete case analysis
+gaussianLong <- na.omit(gaussianLong)
+lapply(gaussianLong[,sapply(gaussianLong, is.factor)], levels)
+# Rater has only one level and is thus not considered
 
 
+# m1: Additive model - Linear mixed model analyzing the effect of Day, Compound, and Type on Width, with random intercepts for Subplot.
+m1 <- lmer(Width ~ Day + Compound + Type + (1 | Subplot), data = gaussianLong)
+summary(m1)
+AIC(m1)
+BIC(m1)
+r2_m1 <- r.squaredGLMM(m1)
+
+# m2: Interaction model Includes interaction effects between Day and Compound.
+m2 <- lmer(Width ~ Day * Compound + Type + (1 | Subplot), data = gaussianLong)
+summary(m2)
+AIC(m2)
+BIC(m2)
+r2_m2 <- r.squaredGLMM(m2)
+
+# m3: Additive model - Adds random intercepts for Flower_index in addition to Subplot.
+m3 <- lmer(Width ~ Day + Compound + (1|Flower_index) + (1|Subplot), data = gaussianLong)
+summary(m3)
+AIC(m3)
+BIC(m3)
+r2_m3 <- r.squaredGLMM(m3)
+
+# m4: Interaction model - Includes interaction between Day and Compound and random intercepts for both Flower_index and Subplot.
+m4 <- lmer(Width ~ Day * Compound + (1|Flower_index) + (1|Subplot), data = gaussianLong)
+summary(m4)
+AIC(m4)
+BIC(m4)
+r2_m4 <- r.squaredGLMM(m4)
+
+# m5: Additive model - Adds random slopes for Day within Subplot to the variables 
+m5 <- lmer(Width ~ Day + Compound + Type + (1 + Day || Subplot), data = gaussianLong)
+summary(m5)
+AIC(m5)
+BIC(m5)
+r2_m5 <- r.squaredGLMM(m5)
+
+# m6: Interaction model - Includes Day and Compound interaction, random slopes for Day within Subplot, and the fixed effect of Type.
+m6 <- lmer(Width ~ Day * Compound + Type + (1 + Day || Subplot), data = gaussianLong)
+summary(m6)
+AIC(m6)
+BIC(m6)
+r2_m6 <- r.squaredGLMM(m6)
+
+# m7: Interaction model - Includes Day and Compound interaction, random intercepts for Flower_index and Subplot.
+m7 <- lmer(Width ~ Day * Compound + (1|Flower_index) + (1|Subplot), data = gaussianLong)
+summary(m7)
+AIC(m7)
+BIC(m7)
+r2_m7 <- r.squaredGLMM(m7)
+
+# m8: Interaction model - Includes Day and Compound interaction and their interaction random slopes on Flower_index, with random intercepts for Subplot.
+m8 <- lmer(Width ~ Day * Compound + Day:Compound + (1 + Compound:Day|Flower_index) + (1|Subplot), data = gaussianLong)
+summary(m8)
+AIC(m8)
+BIC(m8)
+r2_m8 <- r.squaredGLMM(m8)
+
+# m9: Additive model - Examines main and interaction effects of Day and Compound, including interaction random slopes on Flower_index, plus random intercept for Subplot.
+m9 <- lmer(Width ~ Day + Compound + Day:Compound + (1 + Compound:Day|Flower_index) + (1|Subplot), data = gaussianLong)
+summary(m9)
+AIC(m9)
+BIC(m9)
+r2_m9 <- r.squaredGLMM(m9)
+
+
+# Summarizing AIC, BIC, and R-squared values for all models
+results <- data.frame(
+  Model = c("Model 1", "Model 2", "Model 3", "Model 4", "Model 5", "Model 6", "Model 7", "Model 8", "Model 9"),
+  AIC = c(AIC(m1), AIC(m2), AIC(m3), AIC(m4), AIC(m5), AIC(m6), AIC(m7), AIC(m8), AIC(m9)),
+  BIC = c(BIC(m1), BIC(m2), BIC(m3), BIC(m4), BIC(m5), BIC(m6), BIC(m7), BIC(m8), BIC(m9)),
+  R_squared = c(r2_m1, r2_m2, r2_m3, r2_m4, r2_m5, r2_m6, r2_m7, r2_m8, r2_m9)
+)
+print(results)
+
+# Residuals vs fitted values for m4
+residuals_data <- data.frame(
+  Fitted = fitted(stepwiseModel),
+  Residuals = resid(stepwiseModel)
+)
+
+residualPlot <- ggplot(residuals_data, aes(x = Fitted, y = Residuals)) +
+  geom_point() +
+  geom_smooth(method = "loess", color = "red") +
+  labs(title = "Residuals vs Fitted Values", x = "Fitted Values", y = "Residuals")
+
+print(residualPlot)
+
+
+# Cluster-specific effects check
+randomEffectsPlot <- dotplot(ranef(m4, condVar=TRUE))
+print(randomEffectsPlot)
+
+#Question d
+
+# Transforming data for PCA
+pcaData <- dcast(gaussianLong, Flower_index + Compound ~ Day, value.var = "Width")
+pcaResults <- prcomp(pcaData[, -c(1, 2)], center = TRUE, scale. = TRUE)
+
+# Screeplot and Biplot for PCA
+screeplot(pcaResults, type = "lines")
+biplot(pcaResults)
+
+# PCA scores
+scores <- data.frame(pcaResults$x)
+names(scores) <- paste("PC", 1:ncol(scores), sep = "")
+scores <- cbind(pcaData[, 1:2], scores)  # Flower_index and Compound as first two columns in pcaData
+
+# Visualizing patterns
+ggplot(scores, aes(x = PC1, y = PC2, color = Compound)) +
+  geom_point() +
+  labs(title = "PCA Scores by Compound", x = "PC1", y = "PC2") +
+  theme_minimal()
+
+pcaData$meanWidth <- aggregate(Width ~ Flower_index + Compound, data = gaussianLong, FUN = mean)$Width
+
+combined_data <- merge(scores, pcaData, by = c("Flower_index", "Compound"))
+
+# Regression analysis using PCA components
+lm_pca <- lm(meanWidth ~ PC1 + PC2, data = combined_data)
+summary(lm_pca)
+
+# Residuals vs fitted values to check for patterns of non-linearity or heteroscedasticity
+residuals_data <- data.frame(Fitted = fitted(lm_pca), Residuals = resid(lm_pca))
+ggplot(residuals_data, aes(x = Fitted, y = Residuals)) +
+  geom_point() +
+  geom_smooth(method = "loess", color = "red") +
+  labs(title = "Residuals vs Fitted Values", x = "Fitted Values", y = "Residuals")

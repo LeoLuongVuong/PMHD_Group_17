@@ -1,11 +1,13 @@
 library(gee)
 library(tidyr)
+library(tidyverse)
 library(lme4)
 library(ggplot2)
 
-dat_gaus <- read.csv("final_report/datasets/gaussian_data_G17.csv", sep = ",", header = T)
+dat_gaus <- read.csv("final_report/data_analyses/gaussian_data_G17.csv", sep = ",", header = T)
 
 head(dat_gaus)
+summary(dat_gaus)
 
 dat_gaus$Flower_index <- as.factor(dat_gaus$Flower_index)
 dat_gaus$Compound <- as.factor(dat_gaus$Compound)
