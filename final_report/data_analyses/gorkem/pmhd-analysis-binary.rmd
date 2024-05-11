@@ -1,0 +1,247 @@
+---
+title: "PHMD Analysis"
+author: "Görkem Uyanık"
+date: "2023-05-07"
+output:
+  pdf_document:
+    latex_engine: xelatex
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, message=FALSE}
+library(tidyr)
+library(tidyverse)
+library(lme4)
+library(lmerTest)
+library(nlme)
+library(performance)
+library(ggplot2)
+library(multcomp)
+library(DescTools)
+library(optimx)
+library(nloptr)
+library(dfoptim)
+library(broom)
+library(broom.mixed)
+library(reshape2)
+library(dplyr)
+```
+
+
+```{r}
+count_data <- read.csv("count_data_G17.csv") %>% na.omit()
+dim(count_data)
+head(count_data)
+
+count_data <- count_data
+max_days <- max(count_data$tot.vase.days)
+max_days
+```
+
+
+```{r}
+for (flower in 1:nrow(count_data)) {
+  for (i in 1:max_days) {
+    if (i <= count_data[flower, "tot.vase.days"]) {
+      count_data[flower, as.character(i)] <- as.integer(1)
+    } else {
+      count_data[flower, as.character(i)] <- as.integer(0)
+    }
+  }
+}
+
+count_data
+```
+
+
+```{r}
+count_data_long <- 
+  pivot_longer(count_data, cols = 8:37, 
+               names_to = "day_temp", 
+               values_to = "fresh") %>% 
+  mutate(day = as.integer(day_temp)) %>%
+  dplyr::select(-day_temp)
+
+count_data_long
+
+write.csv(count_data_long, "count_data_long_binary_G17.csv")
+```
+
+
+```{r}
+sum_count_data <- count_data_long %>% 
+  group_by(day, compound) %>% 
+  summarise(fresh_sum = sum(fresh))
+
+sum_count_data
+
+sum_count_data %>%
+  ggplot(aes(day, fresh_sum, color = as.factor(compound))) + geom_line()
+```
+
+
+```{r}
+count_data_long$fresh_factor <- as.factor(count_data_long$fresh)
+count_data_long$species_factor <- as.factor(count_data_long$species)
+count_data_long$garden_factor <- as.factor(count_data_long$garden)
+count_data_long$compound_factor <- as.factor(count_data_long$compound)
+count_data_long$flowerID_factor <- as.factor(count_data_long$flowerID)
+count_data_long$rater_factor <- as.factor(count_data_long$rater)
+count_data_long$subplotID_factor <- as.factor(count_data_long$subplotID)
+count_data_long
+```
+
+
+```{r}
+fixed_slope_glmer <- glmer(
+  fresh ~ day +
+  species_factor +
+  garden_factor +
+  day*compound_factor +
+  (1 | subplotID_factor) +
+  (1 | rater_factor) +
+  (1 | flowerID_factor),
+  data = count_data_long,
+  family = binomial,
+  control=glmerControl(optimizer="optimx",
+                       optCtrl=list(method="nlminb")), 
+  nAGQ = 0
+)
+
+print(summary(fixed_slope_glmer), correlation = FALSE)
+```
+
+
+```{r}
+count_data_long_aov.mcp <- glht(fixed_slope_glmer, linfct = mcp(compound_factor = "Dunnett"))
+summary(count_data_long_aov.mcp, test = adjusted("bonferroni"))
+```
+
+
+```{r}
+random_slope_glmer <- glmer(
+  fresh_factor ~ day +
+  species_factor +
+  compound_factor +
+  (1 | subplotID_factor) +
+  (1 | rater_factor) +
+  (day | flowerID_factor),
+  data = count_data_long,
+  family = binomial,
+  control=glmerControl(optimizer="optimx",
+                       optCtrl=list(method="nlminb")), 
+  nAGQ = 0
+)
+
+print(summary(random_slope_glmer), correlation = FALSE)
+```
+
+
+```{r}
+count_data_long_aov.mcp <- glht(random_slope_glmer, linfct = mcp(compound_factor = "Dunnett"))
+summary(count_data_long_aov.mcp, test = adjusted("bonferroni"))
+```
+
+
+
+
+
+
+
+
+
+
+This part is just for finding the best working model.
+
+
+
+
+
+
+
+
+
+
+```{r}
+hebele
+```
+
+
+
+```{r}
+diff_optims <- allFit(random_slope_glmer)
+```
+
+```{r}
+glance(diff_optims) |> dplyr::select(optimizer, AIC, NLL_rel) |> arrange(NLL_rel)
+```
+
+```{r}
+tidy(diff_optims, conf.int = TRUE) |> 
+     arrange(effect, term, estimate) |> 
+     dplyr::select(-c(std.error, statistic))
+```
+
+```{r}
+aa <- diff_optims
+(lliks <- sort(sapply(aa.OK,logLik)))
+```
+
+
+```{r}
+aa.fixef <- t(sapply(aa.OK,fixef))
+aa.fixef.m <- melt(aa.fixef)
+models <- levels(aa.fixef.m$Var1)
+ylabs <- substr(models,1,3)
+aa.fixef.m <- transform(aa.fixef.m,Var1=factor(Var1,levels=names(lliks)))
+(gplot1 <- ggplot(aa.fixef.m,aes(x=value,y=Var1,colour=Var1))+geom_point()+
+     facet_wrap(~Var2,scale="free")+
+         scale_colour_brewer(palette="Dark2")+
+             scale_y_discrete(breaks=models,
+                              labels=ylabs)+
+                                  labs(x="",y=""))
+```
+
+
+```{r}
+aa.stddev <- t(sapply(aa.OK,function(x) sqrt(unlist(VarCorr(x)))))
+print(aa.stddev,digits=3)
+```
+
+
+```{r}
+numcols <- grep("^c\\.",names(count_data_long))
+dfs <- count_data_long
+dfs[,numcols] <- scale(dfs[,numcols])
+m1_sc <- update(random_slope_glmer,data=dfs)
+```
+```{r}
+print(summary(m1_sc), correlation = FALSE)
+```
+
+```{r}
+tt <- getME(m1_sc,"theta")
+ll <- getME(m1_sc,"lower")
+min(tt[ll==0])
+```
+
+```{r}
+derivs1 <- m1_sc@optinfo$derivs
+sc_grad1 <- with(derivs1,solve(Hessian,gradient))
+max(abs(sc_grad1))
+```
+
+```{r}
+max(pmin(abs(sc_grad1),abs(derivs1$gradient)))
+```
+
+```{r}
+ss <- getME(m1_sc,c("theta","fixef"))
+m2 <- update(m1_sc,start=ss,control=glmerControl(optCtrl=list(maxfun=2e4)))
+```
