@@ -133,6 +133,15 @@ gee_no_interaction <- geeglm(fresh ~ compound + day + species + subplotID + rate
 
 geepack::QIC(gee_no_interaction)  # 36039.7 # significantly worse
 
+# only retain interaction term
+gee_only_interaction <- geeglm(fresh ~ compound:day + species + subplotID + rater, 
+                                                     data = binary_outcome, 
+                                                     id = flowerID, 
+                                                     family = binomial, 
+                                                     corstr = "exchangeable")
+
+geepack::QIC(gee_only_interaction) # 36384 # significantly worse
+
 # remove subplotID
 gee_no_subplotID <- geeglm(fresh ~ compound*day + species + rater, 
                            data = binary_outcome, 
