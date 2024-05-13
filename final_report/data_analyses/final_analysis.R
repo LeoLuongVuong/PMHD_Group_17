@@ -499,6 +499,16 @@ ggsave("biplot.svg", plot = biplot, width = 19, height = 12.5, units = "cm")
 
 # Henry's code ---------------------------------------------------------------
 
+library(lme4)
+library(reshape2)
+library(ggplot2)
+library(dplyr)
+library(geepack)
+library(glmmTMB)
+library(MuMIn)
+library(lattice)
+
+
 #Question b
 gaussianData <- read.csv("C:/Users/Moi/Downloads/gaussian_data_G17.csv")
 gaussianLong <- melt(gaussianData, id.vars = c("Flower_index", "Compound", "Rater", "Type", "Garden", "Subplot"), variable.name = "Day", value.name = "Width")
@@ -510,87 +520,89 @@ gaussianLong$Rater <- as.factor(gaussianLong$Rater)
 gaussianLong$Flower_index <- as.factor(gaussianLong$Flower_index)
 # Handling missing data using complete case analysis
 gaussianLong <- na.omit(gaussianLong)
+write.csv(gaussianLong, "gaussian_long.csv", row.names = FALSE)
 lapply(gaussianLong[,sapply(gaussianLong, is.factor)], levels)
 # Rater has only one level and is thus not considered
 
+# m0: Additive model - analyzes the main effects of Day, Compound, Type, and Garden with random intercepts for Subplot
+m0 <- lmer(Width ~ Day + Compound + Type + Garden + (1 | Subplot), data = gaussianLong)
+summary(m0)
+AIC(m0)
+BIC(m0)
+r2_m0 <- r.squaredGLMM(m0)
+print(r2_m0)
 
-# m1: Additive model - Linear mixed model analyzing the effect of Day, Compound, and Type on Width, with random intercepts for Subplot.
-m1 <- lmer(Width ~ Day + Compound + Type + (1 | Subplot), data = gaussianLong)
+# m1: Interaction model - includes the interaction between Day and Compound, plus the main effects of Type and Garden, with random intercepts for Subplot
+m1 <- lmer(Width ~ Day * Compound + Type + Garden + (1 | Subplot), data = gaussianLong)
 summary(m1)
 AIC(m1)
 BIC(m1)
 r2_m1 <- r.squaredGLMM(m1)
+print(r2_m1)
 
-# m2: Interaction model Includes interaction effects between Day and Compound.
-m2 <- lmer(Width ~ Day * Compound + Type + (1 | Subplot), data = gaussianLong)
+# m2: Additive model - Linear mixed model analyzing the effect of Day, Compound, and Type on Width, with random intercepts for Subplot
+m2 <- lmer(Width ~ Day + Compound + Type + (1 | Subplot), data = gaussianLong)
 summary(m2)
 AIC(m2)
 BIC(m2)
 r2_m2 <- r.squaredGLMM(m2)
-
-# m3: Additive model - Adds random intercepts for Flower_index in addition to Subplot.
-m3 <- lmer(Width ~ Day + Compound + (1|Flower_index) + (1|Subplot), data = gaussianLong)
+print(r2_m2)
+# m3: Interaction model - includes the interaction between Day and Compound along with the main effect of Type, featuring random intercepts for Subplot
+m3 <- lmer(Width ~ Day * Compound + Type + (1 | Subplot), data = gaussianLong)
 summary(m3)
 AIC(m3)
 BIC(m3)
 r2_m3 <- r.squaredGLMM(m3)
-
-# m4: Interaction model - Includes interaction between Day and Compound and random intercepts for both Flower_index and Subplot.
-m4 <- lmer(Width ~ Day * Compound + (1|Flower_index) + (1|Subplot), data = gaussianLong)
+print(r2_m3)
+# m4: Additive model - Adds random intercepts for Flower_index in addition to Subplot
+m4 <- lmer(Width ~ Day + Compound + (1|Flower_index) + (1|Subplot), data = gaussianLong)
 summary(m4)
 AIC(m4)
 BIC(m4)
 r2_m4 <- r.squaredGLMM(m4)
-
-# m5: Additive model - Adds random slopes for Day within Subplot to the variables 
-m5 <- lmer(Width ~ Day + Compound + Type + (1 + Day || Subplot), data = gaussianLong)
+print(r2_m4)
+# m5: Interaction model - Includes interaction between Day and Compound and random intercepts for both Flower_index and Subplot
+m5 <- lmer(Width ~ Day * Compound + (1|Flower_index) + (1|Subplot), data = gaussianLong)
 summary(m5)
 AIC(m5)
 BIC(m5)
 r2_m5 <- r.squaredGLMM(m5)
-
-# m6: Interaction model - Includes Day and Compound interaction, random slopes for Day within Subplot, and the fixed effect of Type.
-m6 <- lmer(Width ~ Day * Compound + Type + (1 + Day || Subplot), data = gaussianLong)
+print(r2_m5)
+# m6: Additive model - includes random slopes for Day:Compound within Subplot 
+m6 <- lmer(Width ~ Day + Compound + Type + (1 + Compound:Day || Subplot), data = gaussianLong)
 summary(m6)
 AIC(m6)
 BIC(m6)
 r2_m6 <- r.squaredGLMM(m6)
-
-# m7: Interaction model - Includes Day and Compound interaction, random intercepts for Flower_index and Subplot.
-m7 <- lmer(Width ~ Day * Compound + (1|Flower_index) + (1|Subplot), data = gaussianLong)
+print(r2_m6)
+# m7: Interaction model - features the interaction between Day and Compound, main effect of Type, and random slopes for the Day:Compound interaction within Subplot
+m7 <- lmer(Width ~ Day * Compound + Type + (1 + Compound:Day || Subplot), data = gaussianLong)
 summary(m7)
 AIC(m7)
 BIC(m7)
 r2_m7 <- r.squaredGLMM(m7)
+print(r2_m7)
 
-# m8: Interaction model - Includes Day and Compound interaction and their interaction random slopes on Flower_index, with random intercepts for Subplot.
-m8 <- lmer(Width ~ Day * Compound + Day:Compound + (1 + Compound:Day|Flower_index) + (1|Subplot), data = gaussianLong)
+# m8: Interaction model - includes Day and Compound interaction with random slopes for this interaction on Flower_index and random intercepts for Subplot
+m8 <- lmer(Width ~ Day * Compound + (1 + Compound:Day | Flower_index) + (1 | Subplot), data = gaussianLong)
 summary(m8)
 AIC(m8)
 BIC(m8)
 r2_m8 <- r.squaredGLMM(m8)
+print(r2_m8)
 
-# m9: Additive model - Examines main and interaction effects of Day and Compound, including interaction random slopes on Flower_index, plus random intercept for Subplot.
-m9 <- lmer(Width ~ Day + Compound + Day:Compound + (1 + Compound:Day|Flower_index) + (1|Subplot), data = gaussianLong)
+# m9: Interaction model - examines main and interaction effects of Day and Compound, with random slopes for these interactions on Flower_index, and random intercepts for Subplot
+m9 <- lmer(Width ~ Day * Compound + (1 + Compound:Day | Flower_index) + (1 | Subplot), data = gaussianLong)
 summary(m9)
 AIC(m9)
 BIC(m9)
 r2_m9 <- r.squaredGLMM(m9)
+print(r2_m9)
 
-
-# Summarizing AIC, BIC, and R-squared values for all models
-results <- data.frame(
-  Model = c("Model 1", "Model 2", "Model 3", "Model 4", "Model 5", "Model 6", "Model 7", "Model 8", "Model 9"),
-  AIC = c(AIC(m1), AIC(m2), AIC(m3), AIC(m4), AIC(m5), AIC(m6), AIC(m7), AIC(m8), AIC(m9)),
-  BIC = c(BIC(m1), BIC(m2), BIC(m3), BIC(m4), BIC(m5), BIC(m6), BIC(m7), BIC(m8), BIC(m9)),
-  R_squared = c(r2_m1, r2_m2, r2_m3, r2_m4, r2_m5, r2_m6, r2_m7, r2_m8, r2_m9)
-)
-print(results)
-
-# Residuals vs fitted values for m4
+# Residuals vs fitted values for m5
 residuals_data <- data.frame(
-  Fitted = fitted(stepwiseModel),
-  Residuals = resid(stepwiseModel)
+  Fitted = fitted(m5),
+  Residuals = resid(m5)
 )
 
 residualPlot <- ggplot(residuals_data, aes(x = Fitted, y = Residuals)) +
@@ -602,17 +614,30 @@ print(residualPlot)
 
 
 # Cluster-specific effects check
-randomEffectsPlot <- dotplot(ranef(m4, condVar=TRUE))
+randomEffectsPlot <- dotplot(ranef(m5, condVar=TRUE))
 print(randomEffectsPlot)
 
 #Question d
 
 # Transforming data for PCA
 pcaData <- dcast(gaussianLong, Flower_index + Compound ~ Day, value.var = "Width")
+
+if (sum(is.na(pcaData)) > 0) {
+  pcaData <- pcaData %>%
+    mutate(across(everything(), ~ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+}
+
+pcaData[, -c(1, 2)] <- lapply(pcaData[, -c(1, 2)], as.numeric)
+
 pcaResults <- prcomp(pcaData[, -c(1, 2)], center = TRUE, scale. = TRUE)
 
+# Check results
+summary(pcaResults)
+
 # Screeplot and Biplot for PCA
+# We notice that most of the variance is explained by the first Principal Component
 screeplot(pcaResults, type = "lines")
+# PC1 captures a significant variance component, given the clustering of points along PC1 axis
 biplot(pcaResults)
 
 # PCA scores
@@ -621,6 +646,7 @@ names(scores) <- paste("PC", 1:ncol(scores), sep = "")
 scores <- cbind(pcaData[, 1:2], scores)  # Flower_index and Compound as first two columns in pcaData
 
 # Visualizing patterns
+# Further detailed analysis is needed to understand the role of 'Compound' in the dataset, which cannot be explained by PCA Scores only
 ggplot(scores, aes(x = PC1, y = PC2, color = Compound)) +
   geom_point() +
   labs(title = "PCA Scores by Compound", x = "PC1", y = "PC2") +
@@ -633,10 +659,3 @@ combined_data <- merge(scores, pcaData, by = c("Flower_index", "Compound"))
 # Regression analysis using PCA components
 lm_pca <- lm(meanWidth ~ PC1 + PC2, data = combined_data)
 summary(lm_pca)
-
-# Residuals vs fitted values to check for patterns of non-linearity or heteroscedasticity
-residuals_data <- data.frame(Fitted = fitted(lm_pca), Residuals = resid(lm_pca))
-ggplot(residuals_data, aes(x = Fitted, y = Residuals)) +
-  geom_point() +
-  geom_smooth(method = "loess", color = "red") +
-  labs(title = "Residuals vs Fitted Values", x = "Fitted Values", y = "Residuals")
