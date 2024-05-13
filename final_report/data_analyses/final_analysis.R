@@ -244,6 +244,15 @@ glmm_no_interaction <- glmer(fresh ~ compound + day + rater + species + (1|flowe
 
 AICc(glmm_no_interaction) # 15397 # can't be removed
 
+# tweak glmm_no_garden - test rater as a random intercept instead
+
+glmm_rater_random <- glmer(fresh ~ compound*day + species + (1|rater) + (1|flowerID) + (1|subplotID),
+                           family = binomial(link = "logit"),
+                           data = binary_outcome, nAGQ = 0)
+summary(glmm_rater_random)
+
+AICc(glmm_rater_random) # 15429.76 # the model is much worse
+
 # remove rater
 
 glmm_no_rater <- glmer(fresh ~ compound*day + species + (1|flowerID) + (1|subplotID),
@@ -272,6 +281,10 @@ summary(glmm_no_garden_slope)
 AICc(glmm_no_garden_slope) # 15524 # shouldn't be added
 
 # Conclusion: glmm_no_garden is the best model
+
+## Model diagnostics --------------------------------------------------
+
+
 
 # Question c: Explore/Visualize T0 up to T20 with a multivariate method -------
 
