@@ -531,6 +531,9 @@ biplot <- fviz_pca_var(PCA_T_0_20, col.var = "black")
 ggsave("scree_plot.svg", plot = scree_plot, width = 19, height = 12.5, units = "cm")
 ggsave("biplot.svg", plot = biplot, width = 19, height = 12.5, units = "cm")
 
+ggsave("scree_plot.png", plot = scree_plot, width = 19, height = 12.5, units = "cm")
+ggsave("biplot.png", plot = biplot, width = 19, height = 12.5, units = "cm")
+
 # Henry's code ---------------------------------------------------------------
 
 library(lme4)
