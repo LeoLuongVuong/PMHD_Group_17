@@ -107,6 +107,16 @@ binary_outcome$day <- rep(1:30, nrow(binary_outcome)/30)
 
 binary_outcome$fresh <- ifelse(binary_outcome$day <= binary_outcome$tot.vase.days, 1, 0)
 
+## Visualize Freshness by Compound
+sum_binary_outcome <- binary_outcome %>% 
+  group_by(day, compound) %>% 
+  summarise(fresh_sum = sum(fresh))
+
+view(sum_binary_outcome)
+
+sum_binary_outcome %>%
+  ggplot(aes(day, fresh_sum, color = as.factor(compound))) + geom_line()
+
 ## GEE ---------------------------------------------------------------
 
 ### only clustered within flowerID --------------------------------------------
