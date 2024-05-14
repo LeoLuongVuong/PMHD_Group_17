@@ -114,8 +114,32 @@ sum_binary_outcome <- binary_outcome %>%
 
 view(sum_binary_outcome)
 
-sum_binary_outcome %>%
-  ggplot(aes(day, fresh_sum, color = as.factor(compound))) + geom_line()
+sum_binary <- sum_binary_outcome %>%
+  ggplot(aes(day, fresh_sum, color = as.factor(compound))) + 
+  geom_line() +
+  theme_minimal() +
+  labs(color = "Compound") +
+  ylab("Sum of Freshness") +
+  theme(axis.title = element_text(size = 9, family = "sans"),
+        axis.text = element_text(size = 9, family = "sans"),
+        legend.title = element_text(size = 8, family = "sans"),
+        legend.text = element_text(size = 8, family = "sans"),
+        panel.grid.minor = element_blank())
+ggsave("sum_binary.png", plot = sum_binary, width = 12, height = 11, units = "cm")
+
+
+flowerwidth_compound <- ggplot(data = gaus_Comp, aes(x = Day, y = MeanWidth, group = Compound)) + 
+  geom_line(aes(col = Compound), size = 0.3) +
+  geom_point(aes(col = Compound), size = 1.9) +
+  theme_minimal() +
+  ylab("Mean flower width (cm)") +
+  theme(axis.title = element_text(size = 9, family = "sans"),
+        axis.text = element_text(size = 9, family = "sans"),
+        legend.title = element_text(size = 8, family = "sans"),
+        legend.text = element_text(size = 8, family = "sans"),
+        panel.grid.minor = element_blank())
+ggsave("flowerwidth_compound.png", plot = flowerwidth_compound, width = 12, height = 11, units = "cm")
+
 
 ## GEE ---------------------------------------------------------------
 
