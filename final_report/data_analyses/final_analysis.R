@@ -405,13 +405,13 @@ flowerwidth_compound <- ggplot(data = gaus_Comp, aes(x = Day, y = MeanWidth, gro
   geom_point(aes(col = Compound), size = 1.9) +
   theme_minimal() +
   ylab("Mean flower width (cm)") +
-  theme(axis.title = element_text(size = 7, family = "sans"),
-        axis.text = element_text(size = 7, family = "sans"),
-        legend.title = element_text(size = 6, family = "sans"),
-        legend.text = element_text(size = 6, family = "sans"),
+  theme(axis.title = element_text(size = 9, family = "sans"),
+        axis.text = element_text(size = 9, family = "sans"),
+        legend.title = element_text(size = 8, family = "sans"),
+        legend.text = element_text(size = 8, family = "sans"),
         panel.grid.minor = element_blank())
-ggsave("flowerwidth_compound.svg", plot = flowerwidth_compound, width = 19, height = 19, units = "cm")
-  
+ggsave("flowerwidth_compound.png", plot = flowerwidth_compound, width = 12, height = 11, units = "cm")
+
 # --> Compound 6 hast the smallest Width (considered the freshest at T20)
 
 ## Flower Width by Type for T0-T20
@@ -420,12 +420,12 @@ flowerwidth_type <- ggplot(data = gaus_Type, aes(x = Day, y = MeanWidth, group =
   geom_point(aes(col = Type), size = 1.9) +
   theme_minimal() +
   ylab("Mean flower width (cm)") +
-  theme(axis.title = element_text(size = 7, family = "sans"),
-        axis.text = element_text(size = 7, family = "sans"),
-        legend.title = element_text(size = 6, family = "sans"),
-        legend.text = element_text(size = 6, family = "sans"),
+  theme(axis.title = element_text(size = 9, family = "sans"),
+        axis.text = element_text(size = 9, family = "sans"),
+        legend.title = element_text(size = 8, family = "sans"),
+        legend.text = element_text(size = 8, family = "sans"),
         panel.grid.minor = element_blank())
-ggsave("flowerwidth_type.svg", plot = flowerwidth_type, width = 19, height = 9, units = "cm")
+ggsave("flowerwidth_type.png", plot = flowerwidth_type, width = 10, height = 9, units = "cm")
 # --> species 2 withers faster than species 1
 
 ## Flower Width by Garden for T0-T20
@@ -434,13 +434,13 @@ flowerwidth_garden <- ggplot(data = gaus_Garden, aes(x = Day, y = MeanWidth, gro
   geom_point(aes(col = Garden), size = 1.9) +
   theme_minimal() +
   ylab("Mean flower width (cm)") +
-  theme(axis.title = element_text(size = 7, family = "sans"),
-        axis.text = element_text(size = 7, family = "sans"),
-        legend.title = element_text(size = 6, family = "sans"),
-        legend.text = element_text(size = 6, family = "sans"),
+  theme(axis.title = element_text(size = 9, family = "sans"),
+        axis.text = element_text(size = 9, family = "sans"),
+        legend.title = element_text(size = 8, family = "sans"),
+        legend.text = element_text(size = 8, family = "sans"),
         panel.grid.minor = element_blank())
-ggsave("flowerwidth_garden.svg", plot = flowerwidth_garden, width = 19, height = 9, units = "cm")
-  
+ggsave("flowerwidth_garden.png", plot = flowerwidth_garden, width = 10, height = 9, units = "cm")
+
 # No descriptive difference in Flower Width at any time point, similar pattern
 
 ## Flower Width by Subplot for T0-T20
@@ -449,12 +449,12 @@ flowerwidth_subplot <- ggplot(data = gaus_Subplot, aes(x = Day, y = MeanWidth, g
   geom_point(aes(col = Subplot), size = 1.9) +
   theme_minimal() +
   ylab("Mean flower width (cm)") +
-  theme(axis.title = element_text(size = 7, family = "sans"),
-        axis.text = element_text(size = 7, family = "sans"),
-        legend.title = element_text(size = 6, family = "sans"),
-        legend.text = element_text(size = 6, family = "sans"),
+  theme(axis.title = element_text(size = 12, family = "sans"),
+        axis.text = element_text(size = 12, family = "sans"),
+        legend.title = element_text(size = 11, family = "sans"),
+        legend.text = element_text(size = 11, family = "sans"),
         panel.grid.minor = element_blank())
-ggsave("flowerwidth_subplot.svg", plot = flowerwidth_subplot, width = 19, height = 19, units = "cm")
+ggsave("flowerwidth_subplot.png", plot = flowerwidth_subplot, width = 13, height = 13, units = "cm")
 
 # go back 3 levels to the original dr
 Path = getwd()
