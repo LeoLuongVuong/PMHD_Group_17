@@ -87,7 +87,7 @@ ggsave("Box_plot_total.jpeg", Box_plot_total, width = 13, height = 7, dpi = 300,
 # binary_outcome equals non_gaussian_data with no NA
 
 binary_outcome <- non_gaussian_data %>%
-  na.omit() 
+  na.omit() # removes 165 observations
 
 # replicate each observation of each flowerID 30 times
 
@@ -126,19 +126,6 @@ sum_binary <- sum_binary_outcome %>%
         legend.text = element_text(size = 8, family = "sans"),
         panel.grid.minor = element_blank())
 ggsave("sum_binary.png", plot = sum_binary, width = 12, height = 11, units = "cm")
-
-
-flowerwidth_compound <- ggplot(data = gaus_Comp, aes(x = Day, y = MeanWidth, group = Compound)) + 
-  geom_line(aes(col = Compound), size = 0.3) +
-  geom_point(aes(col = Compound), size = 1.9) +
-  theme_minimal() +
-  ylab("Mean flower width (cm)") +
-  theme(axis.title = element_text(size = 9, family = "sans"),
-        axis.text = element_text(size = 9, family = "sans"),
-        legend.title = element_text(size = 8, family = "sans"),
-        legend.text = element_text(size = 8, family = "sans"),
-        panel.grid.minor = element_blank())
-ggsave("flowerwidth_compound.png", plot = flowerwidth_compound, width = 12, height = 11, units = "cm")
 
 
 ## GEE ---------------------------------------------------------------
@@ -489,6 +476,7 @@ flowerwidth_compound <- ggplot(data = gaus_Comp, aes(x = Day, y = MeanWidth, gro
 ggsave("flowerwidth_compound.png", plot = flowerwidth_compound, width = 12, height = 11, units = "cm")
 
 # --> Compound 6 hast the smallest Width (considered the freshest at T20)
+
 
 ## Flower Width by Type for T0-T20
 flowerwidth_type <- ggplot(data = gaus_Type, aes(x = Day, y = MeanWidth, group = Type)) + 
