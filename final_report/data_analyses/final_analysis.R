@@ -372,9 +372,6 @@ table1(~ Width | Subplot * Type, data = gaussian_long)
 table1(~ Compound | Subplot * Type, data = gaussian_data) # very balance design
 
 # Reorder gaussian_long by Flower_index and Day
-<<<<<<< HEAD
-
-=======
 gaussian_long_arr <- gaussian_long |> 
   arrange(Flower_index, Day) |>
   mutate(Compound = factor(Compound,
@@ -396,7 +393,6 @@ gaussian_long_arr <- gaussian_long |>
                "Zest of Zen"
              )
            ))
->>>>>>> 0823cc579e0afbbef9684fa72a999a89c5a011d0
 
 # Plot the Width of the flowers over Day, color by Flower_index, facet by Compound
 EDA_c <- ggplot(gaussian_long_arr, aes(x = Day, y = Width, group = Flower_index)) +
@@ -578,14 +574,7 @@ biplot <- fviz_pca_var(PCA_T_0_20, col.var = "black")
 ggsave("scree_plot.svg", plot = scree_plot, width = 19, height = 12.5, units = "cm")
 ggsave("biplot.svg", plot = biplot, width = 19, height = 12.5, units = "cm")
 
-<<<<<<< HEAD
 # Henry's code - question b ---------------------------------------------------
-=======
-ggsave("scree_plot.png", plot = scree_plot, width = 19, height = 12.5, units = "cm")
-ggsave("biplot.png", plot = biplot, width = 19, height = 12.5, units = "cm")
-
-# Henry's code ---------------------------------------------------------------
->>>>>>> 0823cc579e0afbbef9684fa72a999a89c5a011d0
 
 library(lme4)
 library(reshape2)
