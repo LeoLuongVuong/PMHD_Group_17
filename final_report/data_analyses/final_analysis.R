@@ -238,6 +238,65 @@ summary(t)
 #compound14:day and compound15:day are not significantly different, and are 
 # not significantly better than water
 
+## Creating Output of Result
+tidy_gee <- tidy(gee_full, conf.int = TRUE, exponentiate = TRUE)
+# Filter out rows corresponding to compound, subplotID, and rater effects
+tidy_gee_filtered <- tidy_gee %>%
+  filter(!grepl("^compound[0-9]+$|^subplotID[0-9]+$|^rater[0-9]+$", term))
+
+# Round the estimates, confidence intervals, and standard errors to 2 decimals
+tidy_gee_filtered$estimate <- round(tidy_gee_filtered$estimate, 2)
+tidy_gee_filtered$conf.low <- round(tidy_gee_filtered$conf.low, 2)
+tidy_gee_filtered$conf.high <- round(tidy_gee_filtered$conf.high, 2)
+tidy_gee_filtered$std.error <- round(tidy_gee_filtered$std.error, 2)
+tidy_gee_filtered$statistic <- round(tidy_gee_filtered$statistic, 2)
+
+# Round the p-values to 3 decimals
+tidy_gee_filtered$p.value <- round(tidy_gee_filtered$p.value, 3)
+
+# Create the summary table excluding the filtered rows
+tab_gee <- tidy_gee_filtered %>%
+  gt() %>%
+  tab_header(
+    title = "GEE Model Summary",
+    subtitle = "Model: fresh ~ compound * day + species + subplotID + rater"
+  ) %>%
+  cols_label(
+    term = "",
+    estimate = "OR",
+    conf.low = "2.5 % CI",
+    conf.high = "97.5 % CI",
+    std.error = "Std. Error",
+    statistic = "Statistic",
+    p.value = "p-value"
+  ) %>%
+  fmt_number(
+    columns = vars(estimate, conf.low, conf.high, std.error),
+    decimals = 2
+  ) %>%
+  fmt_number(
+    columns = vars(p.value),
+    decimals = 3
+  ) %>%
+  cols_align(
+    align = "center",
+    columns = vars(term, estimate, conf.low, conf.high, std.error, statistic, p.value)
+  ) %>%
+  tab_style(
+    style = list(
+      cell_fill(color = "lightblue")
+    ),
+    locations = cells_body(
+      columns = vars(term),
+      rows = estimate > 1
+    )
+  )
+
+setwd("./tables")
+gtsave(tab_gee, "tab_gee.html")
+webshot("tab_gee.html", "tab_gee.pdf")
+
+
 ## GLMM for binary outcome --------------------------------------------------
 
 glmm_full <- glmer(fresh ~ compound*day + rater + species + garden + (1|flowerID) + (1|subplotID),
