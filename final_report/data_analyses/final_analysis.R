@@ -10,11 +10,11 @@ library(multcomp) # contrasting with glht
 library(lme4) # for glmer
 library(flexplot) # for model.comparison
 library(AICcmodavg) # for AICc()
-# for PCA
-library('corrr')
-library(ggcorrplot)
-library("FactoMineR")
-library("factoextra")
+library('corrr') # for PCA
+library(ggcorrplot) # for PCA
+library("FactoMineR") # for PCA
+library("factoextra") # for PCA
+library(car) # for Anova()
 
 
 # Question a: binary outcome for non-gaussian data --------------------------
@@ -317,6 +317,11 @@ gaussian_data <- read.csv("gaussian_data_G17.csv")
 Path = getwd()
 setwd(dirname(dirname(Path)))
 
+# Convert columns to factor
+for (i in 1:6) {
+  gaussian_data[[i]] <- as.factor(gaussian_data[[i]])
+}
+
 # First, convert gaussian_data to long format
 
 gaussian_long <- gaussian_data |> 
@@ -347,10 +352,6 @@ for (i in 1:6) {
 }
 
 gaussian_long[["Day"]] <- as.numeric(gaussian_long[["Day"]])
-
-for (i in 1:6) {
-  gaussian_data[[i]] <- as.factor(gaussian_data[[i]])
-}
 
 # Use table 1 to get an idea about the balance of the data
 table1(~ Width | Subplot * Type, data = gaussian_long)
@@ -561,10 +562,7 @@ biplot <- fviz_pca_var(PCA_T_0_20, col.var = "black")
 ggsave("scree_plot.svg", plot = scree_plot, width = 19, height = 12.5, units = "cm")
 ggsave("biplot.svg", plot = biplot, width = 19, height = 12.5, units = "cm")
 
-ggsave("scree_plot.png", plot = scree_plot, width = 19, height = 12.5, units = "cm")
-ggsave("biplot.png", plot = biplot, width = 19, height = 12.5, units = "cm")
-
-# Henry's code ---------------------------------------------------------------
+# Henry's code - question b ---------------------------------------------------
 
 library(lme4)
 library(reshape2)
@@ -726,3 +724,72 @@ combined_data <- merge(scores, pcaData, by = c("Flower_index", "Compound"))
 # Regression analysis using PCA components
 lm_pca <- lm(meanWidth ~ PC1 + PC2, data = combined_data)
 summary(lm_pca)
+
+# Question d: Analyze T0 up to T20 with a multivariate method -------
+
+## Multivariate regression analysis
+# follow the post at 
+# https://library.virginia.edu/data/articles/getting-started-with-multivariate-multiple-regression
+
+# Regress T0 to T20 on Compound, Type, and Subplot (the saturated model)
+# , with gaussian_data
+mlm1 <- lm(cbind(T_0, T_1, T_2, T_3, T_4, T_5, T_6, T_7, T_8, T_9, T_10, T_11, T_12, T_13, T_14, T_15, T_16, T_17, T_18, T_19, T_20) ~ Compound + Type + Subplot, data = gaussian_data)
+summary(mlm1)
+
+# variance - covariance matrix
+vcov(mlm1) # too complicated
+
+# check what predictor is multivariately significant
+# Either Anova() or Manova() can be used
+Anova <- Anova(mlm1) # all 3 factors are significant
+
+# check if we can remove Subplot
+mlm2 <- update(mlm1, . ~ . - Subplot)
+anova(mlm1, mlm2) #different from Anova() # Can't remove subplot
+
+# mlm1 is the best model. 
+
+# we are interested in Compound with negative coefficients in mlm1
+# extract these compounds
+
+
+# Questions e and f ---------------------------------------------------------
+
+# model 01
+fixed_slope_lmer <- lmer(
+  Width ~ Day +
+    Day:Compound + 
+    Garden +
+    Type + 
+    (1 | Subplot) +
+    (1 | Flower_index),
+  data = gaussian_long 
+)
+# why there's no compound here?
+
+anova(fixed_slope_lmer)
+
+print(summary(fixed_slope_lmer), correlation = FALSE)
+
+AIC(fixed_slope_lmer) #4717.925
+BIC(fixed_slope_lmer) #4848.235
+
+# model 02
+random_slope_lmer <- lmer(
+  Width ~ Day +
+    Compound:Day + 
+    Type + 
+    Garden +
+    (1 | Subplot) +
+    (Day | Flower_index),
+  data = gaussian_long,
+  control = lmerControl(optimizer = "optimx",
+                      optCtrl = list(method = "nlminb")) 
+)
+
+anova(random_slope_lmer)
+
+print(summary(random_slope_lmer), correlation = FALSE)
+
+AIC(random_slope_lmer) #4175.009
+BIC(random_slope_lmer) #4317.729
