@@ -372,16 +372,40 @@ table1(~ Width | Subplot * Type, data = gaussian_long)
 table1(~ Compound | Subplot * Type, data = gaussian_data) # very balance design
 
 # Reorder gaussian_long by Flower_index and Day
+<<<<<<< HEAD
 
+=======
+gaussian_long_arr <- gaussian_long |> 
+  arrange(Flower_index, Day) |>
+  mutate(Compound = factor(Compound,
+             labels = c(
+               "Distilled Water",
+               "Apathic Acid",
+               "Beerse Brew",
+               "Concentrate of Caducues",
+               "Distilled of Discovery",
+               "Essence of Epiphanea",
+               "Four in December",
+               "Granule of Geheref",
+               "Kar-Hamel Mooh",
+               "Lucifer’s Liquid",
+               "Noospherol",
+               "Oil of John’s Son",
+               "Powder of Perlimpinpin",
+               "Spirit of Scienza",
+               "Zest of Zen"
+             )
+           ))
+>>>>>>> 0823cc579e0afbbef9684fa72a999a89c5a011d0
 
 # Plot the Width of the flowers over Day, color by Flower_index, facet by Compound
-EDA_c <- ggplot(gaussian_long, aes(x = Day, y = Width, group = Flower_index)) +
-  geom_line() +
-  facet_wrap(~ Compound, ncol = 3, labeller = label_both) +
+EDA_c <- ggplot(gaussian_long_arr, aes(x = Day, y = Width, group = Flower_index)) +
+  geom_line(size = 0.3) +
+  facet_wrap(~ Compound, ncol = 4, labeller = label_value) +
   theme_minimal() +
   ylab("Flower width (cm)") +
   theme(plot.title = element_text(hjust = 0.5, size = 8, face = "bold", family = "sans"), 
-        strip.text.x = element_text(hjust = 0.5, size = 8, family = "sans"),
+        strip.text.x = element_text(hjust = 0.5, size = 5, family = "sans"),
         axis.title = element_text(size = 7, family = "sans"),
         axis.text = element_text(size = 7, family = "sans"),
         legend.position = "none",
@@ -389,7 +413,7 @@ EDA_c <- ggplot(gaussian_long, aes(x = Day, y = Width, group = Flower_index)) +
 
 # export plots
 setwd("./final_report/data_analyses/eda_plots")
-ggsave("EDA_c.svg", plot = EDA_c, width = 19, height = 19, units = "cm")
+ggsave("EDA_c.png", plot = EDA_c, width = 10, height = 8, units = "cm")
 
 ### Ermi's plot ---------------------------------------------------------------
 
@@ -403,6 +427,29 @@ gaus_Comp <- gaussian_long %>%
     SDWidth   = sd(Width, na.rm = T),
     N         = n()
   )
+
+gaus_Comp$Compound <-
+  factor(
+    gaus_Comp$Compound,
+    labels = c(
+      "Distilled Water",
+      "Apathic Acid",
+      "Beerse Brew",
+      "Concentrate of Caducues",
+      "Distilled of Discovery",
+      "Essence of Epiphanea",
+      "Four in December",
+      "Granule of Geheref",
+      "Kar-Hamel Mooh",
+      "Lucifer’s Liquid",
+      "Noospherol",
+      "Oil of John’s Son",
+      "Powder of Perlimpinpin",
+      "Spirit of Scienza",
+      "Zest of Zen"
+    )
+  )
+
 gaus_Comp$MeanWidth <- round(gaus_Comp$MeanWidth, 2)
 gaus_Comp$SDWidth <- round(gaus_Comp$SDWidth, 2)
 
@@ -531,7 +578,14 @@ biplot <- fviz_pca_var(PCA_T_0_20, col.var = "black")
 ggsave("scree_plot.svg", plot = scree_plot, width = 19, height = 12.5, units = "cm")
 ggsave("biplot.svg", plot = biplot, width = 19, height = 12.5, units = "cm")
 
+<<<<<<< HEAD
 # Henry's code - question b ---------------------------------------------------
+=======
+ggsave("scree_plot.png", plot = scree_plot, width = 19, height = 12.5, units = "cm")
+ggsave("biplot.png", plot = biplot, width = 19, height = 12.5, units = "cm")
+
+# Henry's code ---------------------------------------------------------------
+>>>>>>> 0823cc579e0afbbef9684fa72a999a89c5a011d0
 
 library(lme4)
 library(reshape2)
