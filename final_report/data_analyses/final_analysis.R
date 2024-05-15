@@ -14,7 +14,7 @@ library('corrr') # for PCA
 library(ggcorrplot) # for PCA
 library("FactoMineR") # for PCA
 library("factoextra") # for PCA
-
+library(car) # for Anova()
 
 
 # Question a: binary outcome for non-gaussian data --------------------------
@@ -372,8 +372,7 @@ table1(~ Width | Subplot * Type, data = gaussian_long)
 table1(~ Compound | Subplot * Type, data = gaussian_data) # very balance design
 
 # Reorder gaussian_long by Flower_index and Day
-gaussian_long <- gaussian_long |> 
-  arrange(Flower_index, Day)
+
 
 # Plot the Width of the flowers over Day, color by Flower_index, facet by Compound
 EDA_c <- ggplot(gaussian_long, aes(x = Day, y = Width, group = Flower_index)) +
@@ -711,7 +710,16 @@ vcov(mlm1) # too complicated
 
 # check what predictor is multivariately significant
 # Either Anova() or Manova() can be used
-Anova(mlm1)
+Anova <- Anova(mlm1) # all 3 factors are significant
+
+# check if we can remove Subplot
+mlm2 <- update(mlm1, . ~ . - Subplot)
+anova(mlm1, mlm2) #different from Anova() # Can't remove subplot
+
+# mlm1 is the best model. 
+
+# we are interested in Compound with negative coefficients in mlm1
+# extract these compounds
 
 
 # Questions e and f ---------------------------------------------------------
