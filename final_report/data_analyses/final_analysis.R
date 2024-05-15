@@ -211,6 +211,40 @@ model.sel(gee_full, gee_no_subplotID, gee_no_rater, gee_no_species, rank = QIC)
 # compound 14 & 15 have a better time effect compared to compound 1. However,
 # the effect is not significant.
 
+# create output table for model selection
+# first: dataframe
+gee_dat <- data.frame(
+  model_name = c(1, 2, 3, 4),
+  qic = c(36034, 40663, 47884, 36147),
+  description = c(
+    "Compound*Day + Species + SubplotID + Rater",
+    "Compound*Day + Species + Rater",
+    "Compound*Day + Species + SubplotID",
+    "Compound*Day + Rater + SubplotID"
+  )
+)
+
+# create table
+gee_tab_qic <- gee_dat %>%
+  gt() %>%
+  tab_header(
+    title = "Model Selection Process",
+    subtitle = "Comparison of Models based on Quasi-likelihood under the Independence Model Criterion (QIC)"
+  ) %>%
+  cols_label(
+    model_name = "Model",
+    qic = "QIC",
+    description = "Formula"
+  ) %>%
+  cols_align(
+    align = "center"
+  )
+
+
+setwd("./tables")
+gtsave(gee_tab_qic, "tab_gee_qic.html")
+webshot("tab_gee_qic.html", "tab_qic.pdf")
+
 # create effect plot
 plot(ggemmeans(gee_full, terms = c("day", "compound"),
                conditions = c(species = 2, rater = 2, subplotID = 3))) + 
