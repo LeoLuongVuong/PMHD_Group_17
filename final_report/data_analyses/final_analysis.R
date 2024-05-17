@@ -395,6 +395,15 @@ summary(glmm_no_garden_slope)
 AICc(glmm_no_garden_slope) # 15524 # shouldn't be added
 
 # Conclusion: glmm_no_garden is the best model
+# --> after feedback from prof, change rater and subplot to random effects
+# also, remove compound main effect
+
+glmm_new <- glmer(fresh ~ compound:day + day + species + (1|rater) + (1|flowerID) + (1|subplotID),
+                  family = binomial(link = "logit"),
+                  data = binary_outcome, nAGQ = 0)
+
+
+
 
 ## Model diagnostics --------------------------------------------------
 
