@@ -668,7 +668,7 @@ library(lattice)
 
 
 #Question b
-gaussianData <- read.csv("C:/Users/Moi/Downloads/gaussian_data_G17.csv")
+gaussianData <- read.csv("gaussian_data_G17.csv")
 gaussianLong <- melt(gaussianData, id.vars = c("Flower_index", "Compound", "Rater", "Type", "Garden", "Subplot"), variable.name = "Day", value.name = "Width")
 gaussianLong$Day <- as.numeric(gsub("T_", "", gaussianLong$Day))
 gaussianLong$Compound <- as.factor(gaussianLong$Compound)
