@@ -203,15 +203,6 @@ anova(gee_full)
 
 geepack::QIC(gee_full) #36034  
 
-#### no interaction ------------------------------------------------
-gee_no_interaction <- geeglm(fresh ~ compound + day + species + subplotID + rater, 
-                   data = binary_outcome, 
-                   id = flowerID, 
-                   family = binomial, 
-                   corstr = "exchangeable")
-
-geepack::QIC(gee_no_interaction)  # 36039.7 # significantly worse
-
 #### full remove compound ------------------------------------------------
 gee_no_compound <- geeglm(fresh ~ day + compound:day + species + subplotID + rater, 
                           data = binary_outcome, 
@@ -224,6 +215,15 @@ geepack::QIC(gee_no_compound) # 36384 # significantly worse
 summary(gee_no_compound) # best models, compound 6 and 14 are significantly 
 # better than distilled water
 anova(gee_no_compound)
+
+#### no interaction ------------------------------------------------
+gee_no_interaction <- geeglm(fresh ~ compound + day + species + subplotID + rater, 
+                             data = binary_outcome, 
+                             id = flowerID, 
+                             family = binomial, 
+                             corstr = "exchangeable")
+
+geepack::QIC(gee_no_interaction)  # 39120 # significantly worse
 
 #### only with interaction --------------------------------------------
 gee_only_interaction <- geeglm(fresh ~ compound:day + species + subplotID + rater, 
@@ -238,7 +238,7 @@ summary(gee_only_interaction)
 anova(gee_only_interaction)
 
 #### no subplotID ------------------------------------------------
-gee_no_subplotID <- geeglm(fresh ~ compound*day + species + rater, 
+gee_no_subplotID <- geeglm(fresh ~ day + compound:day + species + rater, 
                            data = binary_outcome, 
                            id = flowerID, 
                            family = binomial, 
@@ -246,10 +246,10 @@ gee_no_subplotID <- geeglm(fresh ~ compound*day + species + rater,
 summary(gee_no_subplotID)
 anova(gee_no_subplotID)
 
-geepack::QIC(gee_no_subplotID) #40663     
+geepack::QIC(gee_no_subplotID) #40891     
 
 #### no rater ------------------------------------------------
-gee_no_rater <- geeglm(fresh ~ compound*day + species + subplotID, 
+gee_no_rater <- geeglm(fresh ~ day + compound:day + species + subplotID, 
                        data = binary_outcome, 
                        id = flowerID, 
                        family = binomial, 
@@ -257,10 +257,10 @@ gee_no_rater <- geeglm(fresh ~ compound*day + species + subplotID,
 summary(gee_no_rater)
 anova(gee_no_rater)
 
-geepack::QIC(gee_no_rater) #47884
+geepack::QIC(gee_no_rater) #48000 
 
 #### no species ------------------------------------------------
-gee_no_species <- geeglm(fresh ~ compound*day + rater + subplotID, 
+gee_no_species <- geeglm(fresh ~ day + compound:day + subplotID + rater, 
                          data = binary_outcome, 
                          id = flowerID, 
                          family = binomial, 
@@ -268,7 +268,7 @@ gee_no_species <- geeglm(fresh ~ compound*day + rater + subplotID,
 summary(gee_no_species)
 anova(gee_no_species)
 
-geepack::QIC(gee_no_species) #36147
+geepack::QIC(gee_no_species) #36473
 
 #### model selection with QIC --------------------------------------------
 
@@ -276,9 +276,10 @@ QIC <- MuMIn::QIC
 ## Not run: 
 QIC <- function(x) geepack::QIC(x)[1]
 
-model.sel(gee_full, gee_no_subplotID, gee_no_rater, gee_no_species, rank = QIC)
+model.sel(gee_full, gee_no_compound, gee_no_interaction, gee_only_interaction, 
+          gee_no_subplotID, gee_no_rater, gee_no_species, rank = QIC)
 
-# gee_full is the best model
+# gee_no_compound is the best model
 
 #### conclusion -----------------------------------------------------------
 
@@ -325,11 +326,19 @@ geepack::QIC(gee_no_compound_un) # 36034 #significantly better
 summary(gee_no_compound_un)
 anova(gee_no_compound_un)
 
+#### model selection with QIC --------------------------------------------
+
+QIC <- MuMIn::QIC
+## Not run: 
+QIC <- function(x) geepack::QIC(x)[1]
+
+model.sel(gee_no_compound_ind, gee_no_compound, gee_no_compound_ar, rank = QIC)
+
 #### conclusion -------------------------
 
 # autoregressive is the best working correlation
 
-### select the best compound -------------------------
+### Select the best compound -------------------------
 
 #### Contrasting with glht function --------------------------------------------
 
@@ -365,6 +374,8 @@ summary(contrast_test)
 
 ### Output table for model selection --------------------------------
 
+#### QIC table ------------------------------------------------
+
 # first: dataframe
 gee_dat <- data.frame(
   model_name = c(1, 2, 3, 4),
@@ -398,8 +409,10 @@ setwd("./tables")
 gtsave(gee_tab_qic, "tab_gee_qic.html")
 webshot("tab_gee_qic.html", "tab_qic.pdf")
 
-## Creating Output of Result
-tidy_gee <- tidy(gee_full, conf.int = TRUE, exponentiate = TRUE)
+#### Tidy table for parameter estimates --------------------------------
+
+tidy_gee <- tidy(gee_no_compound_ar, conf.int = TRUE, exponentiate = TRUE)
+
 # Filter out rows corresponding to compound, subplotID, and rater effects
 tidy_gee_filtered <- tidy_gee %>%
   filter(!grepl("^compound[0-9]+$|^subplotID[0-9]+$|^rater[0-9]+$", term))
@@ -411,6 +424,12 @@ tidy_gee_filtered$conf.high <- round(tidy_gee_filtered$conf.high, 2)
 tidy_gee_filtered$std.error <- round(tidy_gee_filtered$std.error, 2)
 tidy_gee_filtered$statistic <- round(tidy_gee_filtered$statistic, 2)
 
+# Calculate 1-sided p-value
+tidy_gee_filtered$p.value <- tidy_gee_filtered$p.value / 2
+
+# adjust for multiple testing
+tidy_gee_filtered$p.value <- ifelse(tidy_gee_filtered$p.value * 44 < 1, tidy_gee_filtered$p.value * 44, 1)
+
 # Round the p-values to 3 decimals
 tidy_gee_filtered$p.value <- round(tidy_gee_filtered$p.value, 3)
 
@@ -418,17 +437,17 @@ tidy_gee_filtered$p.value <- round(tidy_gee_filtered$p.value, 3)
 tab_gee <- tidy_gee_filtered %>%
   gt() %>%
   tab_header(
-    title = "GEE Model Summary",
-    subtitle = "Model: fresh ~ compound * day + species + subplotID + rater"
+    title = "Table 3: GEE Model Summary",
+    subtitle = "Model: fresh ~ compound * day + day + species + subplotID + rater"
   ) %>%
   cols_label(
-    term = "",
+    term = "Parameters",
     estimate = "OR",
     conf.low = "2.5 % CI",
     conf.high = "97.5 % CI",
     std.error = "Std. Error",
-    statistic = "Statistic",
-    p.value = "p-value"
+    statistic = "Wald test statistic",
+    p.value = html("P-value<sup>")
   ) %>%
   fmt_number(
     columns = vars(estimate, conf.low, conf.high, std.error),
@@ -448,79 +467,91 @@ tab_gee <- tidy_gee_filtered %>%
     ),
     locations = cells_body(
       columns = vars(term),
-      rows = estimate > 1
+      rows = estimate > 1 & p.value < 0.05
     )
+  ) %>%
+tab_footnote(
+    footnote = "1-sided p-value bonferroni corrected for 44 parameters",
+    locations = cells_column_labels(vars(p.value))
   )
+tab_gee
 
 setwd("./tables")
 gtsave(tab_gee, "tab_gee.html")
+gtsave(tab_gee, "tab_gee.pdf")
+gtsave(tab_gee, "tab_gee.rtf")
+gtsave(tab_gee, "tab_gee.docx")
+gtsave(tab_gee, "tab_gee.tex")
 webshot("tab_gee.html", "tab_gee.pdf")
-
 
 ## GLMM for binary outcome --------------------------------------------------
 
-glmm_full <- glmer(fresh ~ compound*day + rater + species + garden + (1|flowerID) + (1|subplotID),
+# full model
+glmm_full <- glmer(fresh ~ day + compound:day + species + garden + (1|flowerID) + (1|subplotID) + (1|rater),
                           family = binomial(link = "logit"),
                           data = binary_outcome, nAGQ = 0)
 summary(glmm_full)
 
-AICc(glmm_full) # 15394
+AICc(glmm_full) # 15447
+BIC(glmm_full) # 15644
 
 # remove garden
-
-glmm_no_garden <- glmer(fresh ~ compound*day + rater + species + (1|flowerID) + (1|subplotID),
+glmm_no_garden <- glmer(fresh ~ day + compound:day + species + (1|flowerID) + (1|subplotID) + (1|rater),
                         family = binomial(link = "logit"),
                         data = binary_outcome, nAGQ = 0)
+
+AICc(glmm_no_garden) # 15445 # can be removed
+BIC(glmm_no_garden) # 15632 # can be removed
+
 summary(glmm_no_garden)
 
-
-AICc(glmm_no_garden) # 15392 # can be removed
-
 # remove interaction
-
-glmm_no_interaction <- glmer(fresh ~ compound + day + rater + species + (1|flowerID) + (1|subplotID),
+glmm_no_interaction <- glmer(fresh ~ compound + day + species + (1|flowerID) + (1|subplotID) + (1|rater),
                              family = binomial(link = "logit"),
                              data = binary_outcome, nAGQ = 0)
 
-AICc(glmm_no_interaction) # 15397 # can't be removed
+AICc(glmm_no_interaction) # 15435 # interaction worsens the model
+BIC(glmm_no_interaction) # 15617 # interaction worsens the model
 
-# tweak glmm_no_garden - test rater as a random intercept instead
-
-glmm_rater_random <- glmer(fresh ~ compound*day + species + (1|rater) + (1|flowerID) + (1|subplotID),
-                           family = binomial(link = "logit"),
-                           data = binary_outcome, nAGQ = 0)
-summary(glmm_rater_random)
-
-AICc(glmm_rater_random) # 15429.76 # the model is much worse
+summary(glmm_no_interaction)
 
 # remove rater
+glmm_no_rater <- glmer(fresh ~ day + compound:day + species + (1|flowerID) + (1|subplotID),
+      family = binomial(link = "logit"),
+      data = binary_outcome, nAGQ = 0)
 
-glmm_no_rater <- glmer(fresh ~ compound*day + species + (1|flowerID) + (1|subplotID),
-                      family = binomial(link = "logit"),
-                      data = binary_outcome, nAGQ = 0)
+AICc(glmm_no_rater) # 17019 # can't be removed
+BIC(glmm_no_rater) # 17197 # can't be removed
+
 summary(glmm_no_rater)
 
-AICc(glmm_no_rater) # 17016 # can't be removed
-
 # remove species
+glmm_no_species <- glmer(fresh ~ day + compound:day + (1|flowerID) + (1|subplotID) + (1|rater),
+                         family = binomial(link = "logit"),
+                         data = binary_outcome, nAGQ = 0)
 
-glmm_no_species <- glmer(fresh ~ compound*day + rater + (1|flowerID) + (1|subplotID),
-                        family = binomial(link = "logit"),
-                        data = binary_outcome, nAGQ = 0)
+AICc(glmm_no_species) # 15469 # can't be removed
+BIC(glmm_no_species) # 15647 # can't be removed
+
 summary(glmm_no_species)
-
-AICc(glmm_no_species) # 15416 # can't be removed
 
 # glmm_no_garden with random slope for compound:day
 
-glmm_no_garden_slope <- glmer(fresh ~ compound + day + compound:day + rater + species + (1 + compound:day|flowerID) + (1|subplotID),
+control <- glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5))
+
+glmm_no_garden_slope <- glmer(fresh ~ day + compound:day + (1 + compound:day|flowerID) + (1|subplotID) + (1|rater),
                               family = binomial(link = "logit"),
-                              data = binary_outcome, nAGQ = 0)
-summary(glmm_no_garden_slope)
+                              data = binary_outcome, 
+                              nAGQ = 0,
+                              control = control)
 
 AICc(glmm_no_garden_slope) # 15524 # shouldn't be added
+BIC(glmm_no_garden_slope) # 15712 # shouldn't be added
+
+summary(glmm_no_garden_slope)
 
 # Conclusion: glmm_no_garden is the best model
+
 # --> after feedback from prof, change rater and subplot to random effects
 # also, remove compound main effect
 
@@ -529,11 +560,7 @@ glmm_new <- glmer(fresh ~ compound:day + day + species + (1|rater) + (1|flowerID
                   data = binary_outcome, nAGQ = 0)
 
 
-
-
 ## Model diagnostics --------------------------------------------------
-
-
 
 # Question c: Explore/Visualize T0 up to T20 with a multivariate method -------
 
