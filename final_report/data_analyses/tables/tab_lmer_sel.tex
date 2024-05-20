@@ -1,0 +1,16 @@
+\begin{longtable}{ccccc}
+\caption*{
+{\large Model Selection Process} \\ 
+{\small Comparison of Models based on AIC, BIC, R}
+} \\ 
+\toprule
+Model & Formula & AIC & BIC & R\textasciicircum{}2 \\ 
+\midrule\addlinespace[2.5pt]
+0 & Compound + Day + FlowerID & 7830 & 7942 & 0.694 \\ 
+1 & Compound:Day + Day + FlowerID & 4924 & 5035 & 0.655 \\ 
+2 & Compound:Day + Day + FlowerID + SubplotID & 4926 & 5044 & 0.655 \\ 
+3 & Compound:Day + Day + Species + FlowerID + SubplotID & 4714 & 4838 & 0.874 \\ 
+4 & Compound:Day + Day + Species + Garden + FlowerID + SubplotID & 4718 & 4848 & 0.873 \\ 
+\bottomrule
+\end{longtable}
+
