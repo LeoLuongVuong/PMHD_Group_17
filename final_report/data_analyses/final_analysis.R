@@ -18,6 +18,7 @@ library(car) # for Anova()
 library(gt) # for making tables
 library(webshot2)
 library(broom)
+library(broom.mixed)
 
 # Question a: binary outcome for non-gaussian data --------------------------
 
@@ -1002,6 +1003,9 @@ gtsave(lmer_tab_sel, "tab_lmer_sel.tex")
 webshot("tab_lmer_sel.html", "tab_lmer_sel.pdf")
 
 ##########################################################
+
+broom.mixed::tidy(lmer_gaussian)
+
 
 
 #Question d
