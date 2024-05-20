@@ -1004,9 +1004,60 @@ webshot("tab_lmer_sel.html", "tab_lmer_sel.pdf")
 
 ##########################################################
 
-broom.mixed::tidy(lmer_gaussian)
+tidy_lmer <- broom.mixed::tidy(lmer_gaussian)
 
+tidy_lmer <- tidy_lmer %>%
+  rename(
+    Term = term,
+    Estimate = estimate,
+    `Standard Error` = std.error,
+    `Degrees of Freedom` = df,
+    `Statistic` = statistic,
+    `p-value` = p.value
+  )
 
+tidy_lmer <- tidy_lmer[-c(18, 19, 20), ]  # remove random effects in fix.eff.table
+
+# tidy_lmer <- tidy_lmer %>% filter(!group)
+
+tidy_lmer$`p-value` <- round(tidy_lmer$`p-value`)
+
+# Create and format output table
+lmer_tab <- tidy_lmer %>%
+  gt() %>%
+  tab_header(
+    title = "Linear Mixed-Effects Model Results",
+    subtitle = "Summary of Fixed Effects"
+  ) %>%
+  fmt_number(
+    columns = vars(Estimate, `Standard Error`, `Degrees of Freedom`, Statistic, `p-value`),
+    decimals = 2
+  ) %>%
+  fmt_scientific(
+    columns = vars(`p-value`),
+    decimals = 3
+  ) %>%
+  cols_label(
+    Term = "Term",
+    Estimate = "Estimate",
+    `Standard Error` = "Std. Error",
+    `Degrees of Freedom` = "DF",
+    Statistic = "t-value",
+    `p-value` = "p-value"
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels(everything())
+  ) %>%
+  tab_options(
+    table.font.size = "small",
+    table.align = "left"
+  )
+
+#setwd("./tables")
+gtsave(lmer_tab, "tab_lmer.html")
+gtsave(lmer_tab, "tab_lmer.tex")
+webshot("tab_lmer.html", "tab_lmer.pdf")
 
 #Question d
 
