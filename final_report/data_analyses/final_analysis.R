@@ -15,7 +15,7 @@ library(ggcorrplot) # for PCA
 library("FactoMineR") # for PCA
 library("factoextra") # for PCA
 library(car) # for Anova()
-
+library(gt) # for making tables
 
 # Question a: binary outcome for non-gaussian data --------------------------
 
@@ -23,17 +23,15 @@ library(car) # for Anova()
 setwd("./final_report/data_analyses")
 non_gaussian_data <- read.csv("count_data_G17.csv")
 
-# Note
-
-# “bushID”: Index of the bush from which the rose was cut - what is this?
-# Don't see in the dataset?
-
-# “T_0”,”T_1”,”…”: Width (cm) of the flower on day 0, 1, …
-
 ## Some EDA and data manipulations -----------------------------------------
 
 str(non_gaussian_data)
 summary(non_gaussian_data)
+
+# check percentage of missing tot.vase.days
+
+sum(is.na(non_gaussian_data$tot.vase.days))/nrow(non_gaussian_data)*100
+# 5.5% missing -> important for discussion!
 
 # Convert all variables to factor except tot.vase.days
 
@@ -71,16 +69,38 @@ Box_plot_total <- non_gaussian_data %>%
   theme_minimal() +
   xlab("Compound") + 
   scale_y_continuous(limits = c(0, 30), breaks = seq(0, 30, by = 5), expand = c(0,0)) +
+  scale_x_discrete(labels = c("Distilled Water",
+                              "Apathic Acid",
+                              "Beerse Brew",
+                              "Concentrate of Caducues",
+                              "Distilled of Discovery",
+                              "Essence of Epiphanea",
+                              "Four in December",
+                              "Granule of Geheref",
+                              "Kar-Hamel Mooh",
+                              "Lucifer’s Liquid",
+                              "Noospherol",
+                              "Oil of John’s Son",
+                              "Powder of Perlimpinpin",
+                              "Spirit of Scienza",
+                              "Zest of Zen")) +
   ylab("Total vase days") +
   theme(plot.title = element_text(hjust = 0.5, size = 8, face = "bold"),
         axis.title = element_text(size = 7),
-        axis.text = element_text(size = 7),
+        axis.text = element_text(size = 6),
+        axis.text.x = element_text(angle = 45, hjust = 1), # Rotate x-axis text
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
         legend.position = 'none') +
   geom_jitter(width = 0.2, alpha = 0.3, size = 0.5)
+Box_plot_total
 
-ggsave("Box_plot_total.jpeg", Box_plot_total, width = 13, height = 7, dpi = 300, unit = "cm")
+# export the plot
+setwd("./eda_plots")
+ggsave("Box_plot_total.jpeg", Box_plot_total, width = 19, height = 9, dpi = 300, unit = "cm")
+# return to the previous directory
+Path <- getwd()
+setwd(dirname(Path))
 
 ### Add binary response ------------------------------------------------
 
@@ -107,34 +127,72 @@ binary_outcome$day <- rep(1:30, nrow(binary_outcome)/30)
 
 binary_outcome$fresh <- ifelse(binary_outcome$day <= binary_outcome$tot.vase.days, 1, 0)
 
-## Visualize Freshness by Compound
+### Visualize Freshness by Compound ---------------------------------------
+
 sum_binary_outcome <- binary_outcome %>% 
   group_by(day, compound) %>% 
   summarise(fresh_sum = sum(fresh))
 
-view(sum_binary_outcome)
+# create a percentage column, which is the percentage of fresh flowers per day
+# at each compound, being 100% per each compound on day 1, this percentage decreases
+# from day 2 on ward (e.g. percentage day 2 = fresh_sum day 2 / fresh_sum day 1 * 100)
+
+sum_binary_outcome <- sum_binary_outcome %>% 
+  group_by(compound) %>% 
+  mutate(percentage = fresh_sum/max(fresh_sum)*100)
+
+# visual percentage per day
+compound_labels = c("Distilled Water",
+             "Apathic Acid",
+             "Beerse Brew",
+             "Concentrate of Caducues",
+             "Distilled of Discovery",
+             "Essence of Epiphanea",
+             "Four in December",
+             "Granule of Geheref",
+             "Kar-Hamel Mooh",
+             "Lucifer’s Liquid",
+             "Noospherol",
+             "Oil of John’s Son",
+             "Powder of Perlimpinpin",
+             "Spirit of Scienza",
+             "Zest of Zen")
 
 sum_binary <- sum_binary_outcome %>%
-  ggplot(aes(day, fresh_sum, color = as.factor(compound))) + 
-  geom_line() +
+  ggplot(aes(day, percentage, color = as.factor(compound))) + 
+  geom_line(size = 1) +
   theme_minimal() +
   labs(color = "Compound") +
-  ylab("Sum of Freshness") +
-  theme(axis.title = element_text(size = 9, family = "sans"),
-        axis.text = element_text(size = 9, family = "sans"),
-        legend.title = element_text(size = 8, family = "sans"),
-        legend.text = element_text(size = 8, family = "sans"),
-        panel.grid.minor = element_blank())
-ggsave("sum_binary.png", plot = sum_binary, width = 12, height = 11, units = "cm")
+  ylab("Percentage of fresh flower") +
+  xlab("Day") +
+  scale_color_viridis_d(labels = compound_labels, option = "D") +
+  #scale_color_manual() +
+  theme(axis.title = element_text(size = 8, family = "sans"),
+        axis.text = element_text(size = 8, family = "sans"),
+        legend.title = element_text(size = 6, family = "sans"),
+        legend.text = element_text(size = 6, family = "sans"),
+        panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+        legend.position = "right",
+        legend.margin = margin(0,0,0,0),
+        legend.box.margin = margin(-1,-1,-1,-1))
+sum_binary
 
+# export the plot
+setwd("./eda_plots")
+ggsave("sum_binary.png", plot = sum_binary, width = 19, height = 12, units = "cm")
+# go back to the previous wd
+Path = getwd()
+setwd(dirname(Path))
 
 ## GEE ---------------------------------------------------------------
+# only clustered within flowerID
 
-### only clustered within flowerID --------------------------------------------
+### Choose set of covariates --------------------------------------------
 
 ## Top-down model selection strategy
 
-# full model
+#### full model -----------------------------------------------------------
 gee_full <- geeglm(fresh ~ compound*day + species + subplotID + rater, 
                     data = binary_outcome, 
                     id = flowerID, 
@@ -145,7 +203,7 @@ anova(gee_full)
 
 geepack::QIC(gee_full) #36034  
 
-# remove interaction term
+#### no interaction ------------------------------------------------
 gee_no_interaction <- geeglm(fresh ~ compound + day + species + subplotID + rater, 
                    data = binary_outcome, 
                    id = flowerID, 
@@ -154,7 +212,20 @@ gee_no_interaction <- geeglm(fresh ~ compound + day + species + subplotID + rate
 
 geepack::QIC(gee_no_interaction)  # 36039.7 # significantly worse
 
-# only retain interaction term
+#### full remove compound ------------------------------------------------
+gee_no_compound <- geeglm(fresh ~ day + compound:day + species + subplotID + rater, 
+                          data = binary_outcome, 
+                          id = flowerID, 
+                          family = binomial, 
+                          corstr = "exchangeable")
+
+geepack::QIC(gee_no_compound) # 36384 # significantly worse
+
+summary(gee_no_compound) # best models, compound 6 and 14 are significantly 
+# better than distilled water
+anova(gee_no_compound)
+
+#### only with interaction --------------------------------------------
 gee_only_interaction <- geeglm(fresh ~ compound:day + species + subplotID + rater, 
                                                      data = binary_outcome, 
                                                      id = flowerID, 
@@ -163,7 +234,10 @@ gee_only_interaction <- geeglm(fresh ~ compound:day + species + subplotID + rate
 
 geepack::QIC(gee_only_interaction) # 36384 # significantly worse
 
-# remove subplotID
+summary(gee_only_interaction)
+anova(gee_only_interaction)
+
+#### no subplotID ------------------------------------------------
 gee_no_subplotID <- geeglm(fresh ~ compound*day + species + rater, 
                            data = binary_outcome, 
                            id = flowerID, 
@@ -174,7 +248,7 @@ anova(gee_no_subplotID)
 
 geepack::QIC(gee_no_subplotID) #40663     
 
-# remove rater
+#### no rater ------------------------------------------------
 gee_no_rater <- geeglm(fresh ~ compound*day + species + subplotID, 
                        data = binary_outcome, 
                        id = flowerID, 
@@ -185,7 +259,7 @@ anova(gee_no_rater)
 
 geepack::QIC(gee_no_rater) #47884
 
-# remove species
+#### no species ------------------------------------------------
 gee_no_species <- geeglm(fresh ~ compound*day + rater + subplotID, 
                          data = binary_outcome, 
                          id = flowerID, 
@@ -208,10 +282,89 @@ model.sel(gee_full, gee_no_subplotID, gee_no_rater, gee_no_species, rank = QIC)
 
 #### conclusion -----------------------------------------------------------
 
-# compound 14 & 15 have a better time effect compared to compound 1. However,
-# the effect is not significant.
+# compound 6 & 14 are significantly better than water.
 
-# create output table for model selection
+### Choose the working correlation --------------------------------------------
+
+#### Independence ------------------------------------------------
+
+gee_no_compound_ind <- geeglm(fresh ~ compound:day + day + species + subplotID + rater, 
+                              data = binary_outcome, 
+                              id = flowerID, 
+                              family = binomial, 
+                              corstr = "independence")
+
+geepack::QIC(gee_no_compound_ind) # 36094 #significantly better
+
+summary(gee_no_compound_ind)
+anova(gee_no_compound_ind)
+
+#### autoregressive ------------------------------------------------
+
+gee_no_compound_ar <- geeglm(fresh ~ compound:day + day + species + subplotID + rater, 
+                             data = binary_outcome, 
+                             id = flowerID, 
+                             family = binomial, 
+                             corstr = "ar1")
+
+geepack::QIC(gee_no_compound_ar) # 36066 #significantly better
+
+summary(gee_no_compound_ar)
+anova(gee_no_compound_ar)
+
+#### unstructured ------------------------------------------------
+
+gee_no_compound_un <- geeglm(fresh ~ compound:day + day + species + subplotID + rater, 
+                             data = binary_outcome, 
+                             id = flowerID, 
+                             family = binomial, 
+                             corstr = "unstructured")
+
+geepack::QIC(gee_no_compound_un) # 36034 #significantly better
+
+summary(gee_no_compound_un)
+anova(gee_no_compound_un)
+
+#### conclusion -------------------------
+
+# autoregressive is the best working correlation
+
+### select the best compound -------------------------
+
+#### Contrasting with glht function --------------------------------------------
+
+## Compound 2, 6, 14 are significantly better than water. So we need to contrast
+# them
+
+# difference between compound16:day and compound14:day of gee_no_compound_ar
+K <- matrix(c(rep(0,33), 1, rep(0, 7), -1, 0), 1)
+t <- glht(gee_no_compound_ar, linfct = K)
+summary(t)
+
+# Extract all the coefficients from gee_no_compound_ar to a matrix
+coef_matrix <- diag(length(coef(gee_no_compound_ar)))[-1,]
+rownames(coef_matrix) <- names(coef(gee_no_compound_ar))[-1]
+coef_matrix
+
+# try out the contrast
+glht(gee_no_compound_ar, linfct = mcp(compound = "Tukey"))
+# doesn't work
+
+## Finally, compare the three compounds
+contrast_matrix <- rbind(
+  "compound6:day - compound14:day = 0" = c(rep(0,33), 1, rep(0, 7), -1, 0),
+  "compound14:day - compound2:day = 0" = c(rep(0,29), -1, rep(0, 11), 1, 0),
+  "compound6:day - compound2:day = 0" = c(rep(0,29), -1, rep(0, 3), 1, rep(0, 9))
+)
+contrast_test <- glht(gee_no_compound_ar, linfct = contrast_matrix)
+summary(contrast_test)
+
+#### conclusion -------------------------
+
+# compound 6 and 14 are not significantly different from each other.
+
+### Output table for model selection --------------------------------
+
 # first: dataframe
 gee_dat <- data.frame(
   model_name = c(1, 2, 3, 4),
@@ -244,33 +397,6 @@ gee_tab_qic <- gee_dat %>%
 setwd("./tables")
 gtsave(gee_tab_qic, "tab_gee_qic.html")
 webshot("tab_gee_qic.html", "tab_qic.pdf")
-
-# create effect plot
-plot(ggemmeans(gee_full, terms = c("day", "compound"),
-               conditions = c(species = 2, rater = 2, subplotID = 3))) + 
-  ggplot2::ggtitle("GEE Effect plot")
-# doesn't work
-
-## Contrasting with contrast function
-# contrast compound14:day vs compound15:day
-
-print(
-  contrast(
-    gee_full, 
-    list(compound = "14"),
-    list(compound = "15")
-  ),
-  X = TRUE)
-
-## Contrasting with glht function
-
-# difference between compound14:day and compound15:day of gee_full
-K <- matrix(c(rep(0,55), 1, -1), 1)
-t <- glht(gee_full, linfct = K)
-summary(t)
-
-#compound14:day and compound15:day are not significantly different, and are 
-# not significantly better than water
 
 ## Creating Output of Result
 tidy_gee <- tidy(gee_full, conf.int = TRUE, exponentiate = TRUE)

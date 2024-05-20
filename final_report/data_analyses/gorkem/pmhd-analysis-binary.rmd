@@ -119,8 +119,10 @@ print(summary(fixed_slope_glmer), correlation = FALSE)
 
 
 ```{r}
+
 count_data_long_aov.mcp <- glht(fixed_slope_glmer, linfct = mcp(compound_factor = "Dunnett"))
 summary(count_data_long_aov.mcp, test = adjusted("bonferroni"))
+
 ```
 
 
