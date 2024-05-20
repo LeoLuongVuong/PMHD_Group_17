@@ -16,6 +16,9 @@ library("FactoMineR") # for PCA
 library("factoextra") # for PCA
 library(car) # for Anova()
 library(gt) # for making tables
+library(webshot2)
+library(broom)
+library(broom.mixed)
 
 # Question a: binary outcome for non-gaussian data --------------------------
 
@@ -888,6 +891,7 @@ AIC(m5)
 BIC(m5)
 r2_m5 <- r.squaredGLMM(m5)
 print(r2_m5)
+
 # m6: Additive model - includes random slopes for Day:Compound within Subplot 
 m6 <- lmer(Width ~ Day + Compound + Type + (1 + Compound:Day || Subplot), data = gaussianLong)
 summary(m6)
@@ -919,6 +923,7 @@ BIC(m9)
 r2_m9 <- r.squaredGLMM(m9)
 print(r2_m9)
 
+
 # Residuals vs fitted values for m5
 residuals_data <- data.frame(
   Fitted = fitted(m5),
@@ -936,6 +941,150 @@ print(residualPlot)
 # Cluster-specific effects check
 randomEffectsPlot <- dotplot(ranef(m5, condVar=TRUE))
 print(randomEffectsPlot)
+
+### re-estimate models for comparison:
+# m0: compound + day + flowerID
+# m1 day:compound + day + flowerID 
+# m2 day:compound + day + flowerID + SUBPLOT
+# m3 day:compound + day + type flowerID + SUBPLOT
+# m4 day:compound + day + type + garden + flowerID + SUBPLOT
+m0 <- lmer(Width ~ Day + Compound + (1 | Flower_index), data = gaussianLong)
+m1 <- lmer(Width ~ Day:Compound + Day + (1 | Flower_index), data = gaussianLong)
+m2 <- lmer(Width ~ Day:Compound + Day + (1 | Flower_index) + (1 | Subplot), data = gaussianLong)
+m3 <- lmer(Width ~ Day:Compound + Day + Type + (1 | Flower_index) + (1 | Subplot), data = gaussianLong)
+m4 <- lmer(Width ~ Day:Compound + Day + Type + Garden + (1 | Flower_index) + (1 | Subplot), data = gaussianLong)
+
+m5 <- lmer(Width ~ Day * Compound + Type + (1|Flower_index) + (1|Subplot), data = gaussianLong)
+
+anova(m3, m5)  # with or without compound main effect --> remain without compund
+
+
+lmer_gaussian <- m3
+summary(lmer_gaussian)
+
+# compounds 2, 3, 5, 6, 9,11, 13, 14, 15 show smaller width over time compared to water
+# --> contrast
+
+anova(m0, m1)
+anova(m1, m2) # not significantly better, but subplot is left in model anyway
+anova(m2, m3)
+anova(m3, m4)
+
+aicm0 <- AIC(m0)
+bicm0 <- BIC(m0)
+r2m0 <- r.squaredGLMM(m0)
+
+aicm1 <- AIC(m1)
+bicm1 <- BIC(m1)
+r2m1 <- r.squaredGLMM(m1)
+
+aicm2 <- AIC(m2)
+bicm2 <- BIC(m2)
+r2m2 <- r.squaredGLMM(m2)
+
+aicm3 <- AIC(m3)
+bicm3 <- BIC(m3)
+r2m3 <- r.squaredGLMM(m3)
+
+aicm4 <- AIC(m4)
+bicm4 <- BIC(m4)
+r2m4 <- r.squaredGLMM(m4)
+
+lmer_dat <- data.frame(
+  model_name = c(0, 1, 2, 3, 4),
+  description = c(
+    "Compound + Day + FlowerID",
+    "Compound:Day + Day + FlowerID",
+    "Compound:Day + Day + FlowerID + SubplotID",
+    "Compound:Day + Day + Species + FlowerID + SubplotID",
+    "Compound:Day + Day + Species + Garden + FlowerID + SubplotID"
+  ),
+  aic = c(aicm0, aicm1, aicm2, aicm3, aicm4),
+  bic = c(bicm0, bicm1, bicm2, bicm3, bicm4),
+  r2m = c(r2m0[1], r2m1[1], r2m2[1], r2m3[1], r2m4[1])
+)
+
+
+
+lmer_tab_sel <- lmer_dat %>%
+  gt() %>%
+  tab_header(
+    title = "Model Selection Process",
+    subtitle = "Comparison of Models based on AIC, BIC, R"
+  ) %>%
+  cols_label(
+    model_name = "Model",
+    aic = "AIC",
+    bic = "BIC",
+    r2m = "R^2",
+    description = "Formula"
+  ) %>%
+  cols_align(
+    align = "center"
+  )
+
+
+#setwd("./tables")
+gtsave(lmer_tab_sel, "tab_lmer_sel.html")
+gtsave(lmer_tab_sel, "tab_lmer_sel.tex")
+webshot("tab_lmer_sel.html", "tab_lmer_sel.pdf")
+
+##########################################################
+
+tidy_lmer <- broom.mixed::tidy(lmer_gaussian)
+
+tidy_lmer <- tidy_lmer %>%
+  rename(
+    Term = term,
+    Estimate = estimate,
+    `Standard Error` = std.error,
+    `Degrees of Freedom` = df,
+    `Statistic` = statistic,
+    `p-value` = p.value
+  )
+
+tidy_lmer <- tidy_lmer[-c(18, 19, 20), ]  # remove random effects in fix.eff.table
+
+# tidy_lmer <- tidy_lmer %>% filter(!group)
+
+tidy_lmer$`p-value` <- round(tidy_lmer$`p-value`)
+
+# Create and format output table
+lmer_tab <- tidy_lmer %>%
+  gt() %>%
+  tab_header(
+    title = "Linear Mixed-Effects Model Results",
+    subtitle = "Summary of Fixed Effects"
+  ) %>%
+  fmt_number(
+    columns = vars(Estimate, `Standard Error`, `Degrees of Freedom`, Statistic, `p-value`),
+    decimals = 2
+  ) %>%
+  fmt_scientific(
+    columns = vars(`p-value`),
+    decimals = 3
+  ) %>%
+  cols_label(
+    Term = "Term",
+    Estimate = "Estimate",
+    `Standard Error` = "Std. Error",
+    `Degrees of Freedom` = "DF",
+    Statistic = "t-value",
+    `p-value` = "p-value"
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_column_labels(everything())
+  ) %>%
+  tab_options(
+    table.font.size = "small",
+    table.align = "left"
+  )
+
+#setwd("./tables")
+gtsave(lmer_tab, "tab_lmer.html")
+gtsave(lmer_tab, "tab_lmer.tex")
+webshot("tab_lmer.html", "tab_lmer.pdf")
 
 #Question d
 
