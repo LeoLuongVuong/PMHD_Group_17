@@ -1,0 +1,32 @@
+\setlength{\LTpost}{0mm}
+\begin{longtable}{ccccccc}
+\caption*{
+{\large Table 3: GEE Model Summary} \\ 
+{\small Model: fresh \textasciitilde{} compound * day + species + subplotID + rater}
+} \\ 
+\toprule
+Parameters & OR & Std. Error & Wald test statistic & P-value<sup>\textsuperscript{\textit{1}} & 2.5 \% CI & 97.5 \% CI \\ 
+\midrule\addlinespace[2.5pt]
+\cellcolor[HTML]{ADD8E6}{(Intercept)} & $1,078.55$ & $0.21$ & 1114.14 & $0.000$ & $715.74$ & $1,625.27$ \\ 
+day & $0.60$ & $0.01$ & 1469.12 & $0.000$ & $0.58$ & $0.61$ \\ 
+species2 & $0.72$ & $0.07$ & 25.16 & $0.000$ & $0.63$ & $0.82$ \\ 
+compound2:day & $1.04$ & $0.02$ & 6.42 & $0.248$ & $1.01$ & $1.07$ \\ 
+compound3:day & $1.02$ & $0.02$ & 1.86 & $1.000$ & $0.99$ & $1.05$ \\ 
+compound4:day & $0.90$ & $0.02$ & 33.43 & $0.000$ & $0.87$ & $0.93$ \\ 
+compound5:day & $1.01$ & $0.02$ & 0.57 & $1.000$ & $0.98$ & $1.04$ \\ 
+\cellcolor[HTML]{ADD8E6}{compound6:day} & $1.11$ & $0.01$ & 56.24 & $0.000$ & $1.08$ & $1.14$ \\ 
+compound7:day & $0.97$ & $0.02$ & 3.24 & $1.000$ & $0.94$ & $1.00$ \\ 
+compound8:day & $0.94$ & $0.02$ & 16.61 & $0.001$ & $0.91$ & $0.97$ \\ 
+compound9:day & $1.00$ & $0.02$ & 0.01 & $1.000$ & $0.97$ & $1.03$ \\ 
+compound10:day & $0.90$ & $0.02$ & 36.59 & $0.000$ & $0.87$ & $0.93$ \\ 
+compound11:day & $1.03$ & $0.02$ & 2.98 & $1.000$ & $1.00$ & $1.06$ \\ 
+compound12:day & $0.97$ & $0.02$ & 4.94 & $0.578$ & $0.94$ & $1.00$ \\ 
+compound13:day & $1.03$ & $0.02$ & 3.07 & $1.000$ & $1.00$ & $1.06$ \\ 
+\cellcolor[HTML]{ADD8E6}{compound14:day} & $1.10$ & $0.01$ & 45.05 & $0.000$ & $1.07$ & $1.14$ \\ 
+compound15:day & $1.02$ & $0.02$ & 1.54 & $1.000$ & $0.99$ & $1.05$ \\ 
+\bottomrule
+\end{longtable}
+\begin{minipage}{\linewidth}
+\textsuperscript{\textit{1}}1-sided p-value bonferroni corrected for 44 parameters\\
+\end{minipage}
+
