@@ -916,27 +916,13 @@ randomEffectsPlot <- dotplot(ranef(m5, condVar=TRUE))
 print(randomEffectsPlot)
 
 ### re-estimate models for comparison:
-# m0: compound + day + flowerID
-# m1 day:compound + day + flowerID 
-# m2 day:compound + day + flowerID + SUBPLOT
-# m3 day:compound + day + type flowerID + SUBPLOT
-# m4 day:compound + day + type + garden + flowerID + SUBPLOT
-m0 <- lmer(Width ~ Day + Compound + (1 | Flower_index), data = gaussianLong)
-m1 <- lmer(Width ~ Day:Compound + Day + (1 | Flower_index), data = gaussianLong)
+m0 <- lmer(Width ~ Day + Compound (1 | Flower_index) + (1 | Subplot), data = gaussianLong)
+m1 <- lmer(Width ~ Day*Compound + (1 | Flower_index) + (1 | Subplot), data = gaussianLong)
 m2 <- lmer(Width ~ Day:Compound + Day + (1 | Flower_index) + (1 | Subplot), data = gaussianLong)
 m3 <- lmer(Width ~ Day:Compound + Day + Type + (1 | Flower_index) + (1 | Subplot), data = gaussianLong)
 m4 <- lmer(Width ~ Day:Compound + Day + Type + Garden + (1 | Flower_index) + (1 | Subplot), data = gaussianLong)
 
 m5 <- lmer(Width ~ Day * Compound + Type + (1|Flower_index) + (1|Subplot), data = gaussianLong)
-
-anova(m3, m5)  # with or without compound main effect --> remain without compund
-
-
-lmer_gaussian <- m3
-summary(lmer_gaussian)
-
-# compounds 2, 3, 5, 6, 9,11, 13, 14, 15 show smaller width over time compared to water
-# --> contrast
 
 anova(m0, m1)
 anova(m1, m2) # not significantly better, but subplot is left in model anyway
@@ -966,10 +952,10 @@ r2m4 <- r.squaredGLMM(m4)
 lmer_dat <- data.frame(
   model_name = c(0, 1, 2, 3, 4),
   description = c(
-    "Compound + Day + FlowerID",
-    "Compound:Day + Day + FlowerID",
+    "Compound + Day + FlowerID  + SubplotID",
+    "Compound*Day + FlowerID + SubplotID",
     "Compound:Day + Day + FlowerID + SubplotID",
-    "Compound:Day + Day + Species + FlowerID + SubplotID",
+    "Compound:Day + Day + Species + Type + FlowerID + SubplotID",
     "Compound:Day + Day + Species + Garden + FlowerID + SubplotID"
   ),
   aic = c(aicm0, aicm1, aicm2, aicm3, aicm4),
@@ -1004,6 +990,34 @@ webshot("tab_lmer_sel.html", "tab_lmer_sel.pdf")
 
 ##########################################################
 
+# same analysis with renamed compounds
+gaussianLongArr <- gaussianLong |> 
+  arrange(Flower_index, Day) |>
+  mutate(Compound = factor(Compound,
+                           labels = c(
+                             "Distilled Water",
+                             "Apathic Acid",
+                             "Beerse Brew",
+                             "Concentrate of Caducues",
+                             "Distilled of Discovery",
+                             "Essence of Epiphanea",
+                             "Four in December",
+                             "Granule of Geheref",
+                             "Kar-Hamel Mooh",
+                             "Lucifer’s Liquid",
+                             "Noospherol",
+                             "Oil of John’s Son",
+                             "Powder of Perlimpinpin",
+                             "Spirit of Scienza",
+                             "Zest of Zen"
+                           )
+  ))
+# 
+m3 <- lmer(Width ~ Day:Compound + Day + Type
+           + (1 | Flower_index) + (1 | Subplot), data = gaussianLongArr)
+lmer_gaussian <- m3
+
+
 tidy_lmer <- broom.mixed::tidy(lmer_gaussian)
 
 tidy_lmer <- tidy_lmer %>%
@@ -1017,10 +1031,11 @@ tidy_lmer <- tidy_lmer %>%
   )
 
 tidy_lmer <- tidy_lmer[-c(18, 19, 20), ]  # remove random effects in fix.eff.table
+tidy_lmer <- tidy_lmer[, -c(1, 2)] # drop columns group and effect
+tidy_lmer$`p-value` <- ifelse(tidy_lmer$`p-value` < .001 , "<.001",)
 
-# tidy_lmer <- tidy_lmer %>% filter(!group)
-
-tidy_lmer$`p-value` <- round(tidy_lmer$`p-value`)
+#tidy_lmer$`p-value` <- round(tidy_lmer$`p-value`, 3)
+tidy_lmer$`Degrees of Freedom` <- round(tidy_lmer$`Degrees of Freedom`, 0)
 
 # Create and format output table
 lmer_tab <- tidy_lmer %>%
@@ -1030,13 +1045,13 @@ lmer_tab <- tidy_lmer %>%
     subtitle = "Summary of Fixed Effects"
   ) %>%
   fmt_number(
-    columns = vars(Estimate, `Standard Error`, `Degrees of Freedom`, Statistic, `p-value`),
+    columns = vars(Estimate, `Standard Error`, Statistic),
     decimals = 2
   ) %>%
-  fmt_scientific(
-    columns = vars(`p-value`),
-    decimals = 3
-  ) %>%
+  #fmt_scientific(
+  #  columns = vars(`p-value`),
+  #  decimals = 3
+  #) %>%
   cols_label(
     Term = "Term",
     Estimate = "Estimate",
@@ -1054,10 +1069,36 @@ lmer_tab <- tidy_lmer %>%
     table.align = "left"
   )
 
-#setwd("./tables")
+setwd("./tables")
 gtsave(lmer_tab, "tab_lmer.html")
 gtsave(lmer_tab, "tab_lmer.tex")
 webshot("tab_lmer.html", "tab_lmer.pdf")
+######
+
+lmer_gaussian <- m3
+summary(lmer_gaussian)
+
+# compounds 2, 3, 5, 6, 9,11, 13, 14, 15 show smaller width over time compared to water
+# --> contrast for the 4 largest coefficients
+
+
+negative_compounds <- c("Compound2", "Compound3", "Compound5", "Compound6")
+negative_compounds <- c("Apathic Acid", "Beerse Brew", "Distilled of Discovery", "Essense of Epiphanea")
+
+
+margmeans <- emmeans(lmer_gaussian, ~ Compound * Day)
+# margmeans <- emmeans(lmer_gaussian, ~ Compound | Day, pbkrtest.limit = 3660)
+
+contrasts <- emmeans::contrast(margmeans, method = "dunnett", simple = "each", combine = TRUE, 
+                               adjust = "bonferroni")
+negative_contrasts <- contrasts %>%
+  as.data.frame() %>%
+  filter(contrast %in% negative_compounds)
+
+print(negative_contrasts)
+
+# Contrast table
+
 
 #Question d
 
