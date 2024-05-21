@@ -1110,24 +1110,67 @@ summary(lmer_gaussian)
 
 
 negative_compounds <- c("Compound2", "Compound3", "Compound5", "Compound6")
-negative_compounds <- c("Apathic Acid", "Beerse Brew", "Distilled of Discovery", "Essense of Epiphanea")
-
 
 margmeans <- emmeans(lmer_gaussian, ~ Compound * Day)
 # margmeans <- emmeans(lmer_gaussian, ~ Compound | Day, pbkrtest.limit = 3660)
 
-contrasts <- emmeans::contrast(margmeans, method = "dunnett", simple = "each", combine = TRUE, 
+contrasts <- emmeans::contrast(margmeans, method = "pairwise", simple = "each", combine = TRUE, 
                                adjust = "bonferroni")
-negative_contrasts <- contrasts %>%
+
+negative_compounds <- c("Apathic Acid - Beerse Brew", 
+                        "Apathic Acid - Distilled of Discovery", 
+                        "Apathic Acid - Essence of Epiphanea", 
+                        "Beerse Brew - Distilled of Discovery", 
+                        "Beerse Brew - Essence of Epiphanea", 
+                        "Distilled of Discovery - Essence of Epiphanea")
+
+filtered_contrasts <- contrasts %>%
   as.data.frame() %>%
   filter(contrast %in% negative_compounds)
 
-print(negative_contrasts)
 
 # Contrast table
+contrast_results <- data.frame(
+  contrast = filtered_contrasts$contrast,
+  estimate = filtered_contrasts$estimate,
+  SE = filtered_contrasts$SE,
+  df = filtered_contrasts$df,
+  t.ratio = filtered_contrasts$t.ratio,
+  p.value = filtered_contrasts$p.value
+)
+
+tab_lmer_contr <- contrast_results %>%
+  gt() %>%
+  tab_header(
+    title = "Contrast Results",
+    subtitle = "Estimated Marginal Means Contrasts"
+  ) %>%
+  cols_label(
+    contrast = "Contrast",
+    estimate = "Estimate",
+    SE = "Std. Error",
+    df = "Degrees of Freedom",
+    t.ratio = "t-value",
+    p.value = "p-value"
+  ) %>%
+  fmt_number(
+    columns = vars(estimate, SE, t.ratio),
+    decimals = 3
+  ) %>%
+  fmt_number(
+    columns = vars(df),
+    decimals = 0
+  ) %>%
+  cols_width(contrast ~ px(350))
+
+# save
+setwd("./tables")
+gtsave(tab_lmer_contr, "tab_lmer_contr.html")
+gtsave(tab_lmer_contr, "tab_lmer_contr.tex")
+webshot("tab_lmer_contr.html", "tab_lmer_contr.pdf")
 
 
-#Question d
+####### Question d ######
 
 # Transforming data for PCA
 pcaData <- dcast(gaussianLong, Flower_index + Compound ~ Day, value.var = "Width")
