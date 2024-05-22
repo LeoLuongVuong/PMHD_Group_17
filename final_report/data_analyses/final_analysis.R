@@ -1126,7 +1126,16 @@ negative_compounds <- c("Apathic Acid - Beerse Brew",
 
 filtered_contrasts <- contrasts %>%
   as.data.frame() %>%
+  mutate(p.value = ifelse(p.value < .001, "<.001", p.value)) %>%
   filter(contrast %in% negative_compounds)
+
+filtered_contrasts
+
+
+#filtered_contrasts$p.value <- ifelse(filtered_contrasts$p.value < .001, "<.001", filtered_contrasts$p.value)
+
+# filtered_contrasts <- filtered_contrasts %>%
+#   mutate(p.value = paste0("$", p.value, "$"))
 
 
 # Contrast table
@@ -1148,20 +1157,21 @@ tab_lmer_contr <- contrast_results %>%
   cols_label(
     contrast = "Contrast",
     estimate = "Estimate",
-    SE = "Std. Error",
-    df = "Degrees of Freedom",
+    SE = "SE",
+    df = "DF",
     t.ratio = "t-value",
     p.value = "p-value"
   ) %>%
   fmt_number(
     columns = vars(estimate, SE, t.ratio),
-    decimals = 3
+    decimals = 2,
+    #drop_trailing_zeros = TRUE
   ) %>%
   fmt_number(
-    columns = vars(df),
-    decimals = 0
+    columns = vars(p.value),
+    decimals = 3
   ) %>%
-  cols_width(contrast ~ px(350))
+  cols_width(contrast ~ px(180))
 
 # save
 setwd("./tables")
