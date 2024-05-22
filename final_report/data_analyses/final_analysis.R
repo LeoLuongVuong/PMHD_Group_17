@@ -1167,9 +1167,7 @@ m3 <- lmer(Width ~ Day:Compound + Day + Type
 lmer_gaussian <- m3
 
 
-tidy_lmer <- broom.mixed::tidy(lmer_gaussian)
-
-tidy_lmer <- tidy_lmer %>%
+tidy_lmer <- broom.mixed::tidy(lmer_gaussian) %>%
   rename(
     Term = term,
     Estimate = estimate,
@@ -1177,14 +1175,22 @@ tidy_lmer <- tidy_lmer %>%
     `Degrees of Freedom` = df,
     `Statistic` = statistic,
     `p-value` = p.value
+  ) %>%
+  filter(!is.na(`Degrees of Freedom`)) %>%  # Exclude random effects
+  dplyr::select(-group, -effect) %>%  # Drop unnecessary columns
+  mutate(
+    #Term = sub("^[^:]*:", "", Term),  # Remove variable name and keep only the label
+    `p-value` = ifelse(`p-value` < .001, "<.001", as.character(`p-value`)),
+    `Degrees of Freedom` = round(`Degrees of Freedom`, 0)
   )
+# for table: remove "Compound" from each compound name
+#tidy_lmer$Term[4:17] <- sub("Compound", "", tidy_lmer$Term[4:17]) %>% trimws()
+tidy_lmer$Term[4:17] <- c("Apathic Acid : day", "Beerse Brew : day", "Concentrate of Caducues : day", 
+                        "Distilled of Discovery", "Essence of Epiphanea : day", "Four in December : day", 
+                        "Granule of Geheref : day", "Kar-Hamel Mooh : day", "Lucifer’s Liquid : day", 
+                        "Noospherol : day", "Oil of John’s Son : day", "Powder of Perlimpinpin : day", 
+                        "Spirit of Scienza : day", "Zest of Zen : day")
 
-tidy_lmer <- tidy_lmer[-c(18, 19, 20), ]  # remove random effects in fix.eff.table
-tidy_lmer <- tidy_lmer[, -c(1, 2)] # drop columns group and effect
-tidy_lmer$`p-value` <- ifelse(tidy_lmer$`p-value` < .001 , "<.001",)
-
-#tidy_lmer$`p-value` <- round(tidy_lmer$`p-value`, 3)
-tidy_lmer$`Degrees of Freedom` <- round(tidy_lmer$`Degrees of Freedom`, 0)
 
 # Create and format output table
 lmer_tab <- tidy_lmer %>%
