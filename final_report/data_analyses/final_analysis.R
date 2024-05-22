@@ -19,6 +19,8 @@ library(gt) # for making tables
 library(webshot2)
 library(broom)
 library(broom.mixed)
+library(xtable) # generate output for latex
+library(varTestnlme) # check the variance component
 
 # Question a: binary outcome for non-gaussian data --------------------------
 
@@ -348,19 +350,10 @@ model.sel(gee_no_compound_ind, gee_no_compound, gee_no_compound_ar, rank = QIC)
 ## Compound 2, 6, 14 are significantly better than water. So we need to contrast
 # them
 
-# difference between compound16:day and compound14:day of gee_no_compound_ar
-K <- matrix(c(rep(0,33), 1, rep(0, 7), -1, 0), 1)
-t <- glht(gee_no_compound_ar, linfct = K)
-summary(t)
-
 # Extract all the coefficients from gee_no_compound_ar to a matrix
 coef_matrix <- diag(length(coef(gee_no_compound_ar)))[-1,]
 rownames(coef_matrix) <- names(coef(gee_no_compound_ar))[-1]
 coef_matrix
-
-# try out the contrast
-glht(gee_no_compound_ar, linfct = mcp(compound = "Tukey"))
-# doesn't work
 
 ## Finally, compare the three compounds
 contrast_matrix <- rbind(
@@ -489,7 +482,9 @@ webshot("tab_gee.html", "tab_gee.pdf")
 
 ## GLMM for binary outcome --------------------------------------------------
 
-# full model
+### Choose model structure --------------------------------------------
+
+#### full model ------------------------------------------------
 glmm_full <- glmer(fresh ~ day + compound:day + species + garden + (1|flowerID) + (1|subplotID) + (1|rater),
                           family = binomial(link = "logit"),
                           data = binary_outcome, nAGQ = 0)
@@ -498,7 +493,7 @@ summary(glmm_full)
 AICc(glmm_full) # 15447
 BIC(glmm_full) # 15644
 
-# remove garden
+#### remove garden ------------------------------------------------
 glmm_no_garden <- glmer(fresh ~ day + compound:day + species + (1|flowerID) + (1|subplotID) + (1|rater),
                         family = binomial(link = "logit"),
                         data = binary_outcome, nAGQ = 0)
@@ -508,7 +503,7 @@ BIC(glmm_no_garden) # 15632 # can be removed
 
 summary(glmm_no_garden)
 
-# remove interaction
+#### remove interaction ------------------------------------------------
 glmm_no_interaction <- glmer(fresh ~ compound + day + species + (1|flowerID) + (1|subplotID) + (1|rater),
                              family = binomial(link = "logit"),
                              data = binary_outcome, nAGQ = 0)
@@ -518,7 +513,7 @@ BIC(glmm_no_interaction) # 15617 # interaction worsens the model
 
 summary(glmm_no_interaction)
 
-# remove rater
+#### remove rater ------------------------------------------------
 glmm_no_rater <- glmer(fresh ~ day + compound:day + species + (1|flowerID) + (1|subplotID),
       family = binomial(link = "logit"),
       data = binary_outcome, nAGQ = 0)
@@ -528,7 +523,7 @@ BIC(glmm_no_rater) # 17197 # can't be removed
 
 summary(glmm_no_rater)
 
-# remove species
+#### remove species ------------------------------------------------
 glmm_no_species <- glmer(fresh ~ day + compound:day + (1|flowerID) + (1|subplotID) + (1|rater),
                          family = binomial(link = "logit"),
                          data = binary_outcome, nAGQ = 0)
@@ -538,7 +533,7 @@ BIC(glmm_no_species) # 15647 # can't be removed
 
 summary(glmm_no_species)
 
-# glmm_no_garden with random slope for compound:day
+#### glmm_no_garden with random slope for compound:day -----------------------
 
 control <- glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5))
 
@@ -553,15 +548,142 @@ BIC(glmm_no_garden_slope) # 15712 # shouldn't be added
 
 summary(glmm_no_garden_slope)
 
-# Conclusion: glmm_no_garden is the best model
+##### Doesn't work, will give it a try later! ----------------------------
 
-# --> after feedback from prof, change rater and subplot to random effects
-# also, remove compound main effect
+### Variance component test --------------------------------------------
 
-glmm_new <- glmer(fresh ~ compound:day + day + species + (1|rater) + (1|flowerID) + (1|subplotID),
-                  family = binomial(link = "logit"),
-                  data = binary_outcome, nAGQ = 0)
+#### Compare glmm_no_garden with glmm_no_rater -----------------------
 
+vt <- varCompTest(glmm_no_interaction, glmm_no_rater)
+# doesn't work for more than one random effect
+
+### Select the best compound -------------------------
+
+#### Contrasting with glht function --------------------------------------------
+
+## Compound 6, 14 are significantly better than water. So we need to contrast
+# them
+
+# Extract the fixed effects coefficients
+fixed_effects <- fixef(glmm_no_garden)
+
+# Create a diagonal matrix for the fixed effects, excluding the intercept
+coef_matrix <- diag(length(fixed_effects))[-1,]
+rownames(coef_matrix) <- names(fixed_effects)[-1]
+coef_matrix
+
+## Finally, compare the three compounds
+contrast_matrix <- matrix(c(rep(0,7), 1, rep(0, 7), -1, 0), 1)
+contrast_test <- glht(glmm_no_garden, linfct = contrast_matrix)
+summary(contrast_test)
+
+#### conclusion -------------------------
+
+# compound 6 and 14 are not significantly different from each other.
+
+### Model output --------------------------------------------------------
+
+#### Model selection ---------------------------------------------------
+
+# Define the model structures
+model_structures <- c(
+  "day + compound:day + species + garden + (1|flowerID) + (1|subplotID) + (1|rater)",
+  "day + compound:day + species + (1|flowerID) + (1|subplotID) + (1|rater)",
+  "compound + day + species + (1|flowerID) + (1|subplotID) + (1|rater)",
+  "day + compound:day + species + (1|flowerID) + (1|subplotID)",
+  "day + compound:day + (1|flowerID) + (1|subplotID) + (1|rater)"
+)
+
+# models list
+glmm_models <- list(
+  glmm_full,
+  glmm_no_garden,
+  glmm_no_interaction,
+  glmm_no_rater,
+  glmm_no_species
+)
+
+# Calculate AIC and BIC
+aic_values <- sapply(glmm_models, AIC)
+bic_values <- sapply(glmm_models, BIC)
+
+# Create a data frame
+model_df <- data.frame(
+  Model = 1:length(glmm_models),
+  `Mixed-effects` = model_structures,
+  AIC = aic_values,
+  BIC = bic_values
+)
+
+# Sort by AIC
+model_df <- model_df[order(model_df$AIC), ]
+model_df$Model <- 1:nrow(model_df)
+
+# Remove the first row, and re-number the models
+model_df <- model_df[-1, ]
+model_df$Model <- 1:nrow(model_df)
+
+# Create the LaTeX table
+print(xtable(model_df, caption = "Model comparison based on AIC and BIC",
+             label = "tab:model_comparison"),
+      include.rownames = FALSE,
+      floating = TRUE,
+      tabular.environment = "tabular",
+      hline.after = c(-1, 0, nrow(model_df)))
+
+#### Best model parameter estimate --------------------------------------------------
+
+tidy_glmm <- tidy(glmm_no_garden, conf.int = TRUE, exponentiate = TRUE)
+View(tidy_glmm)
+
+# start from here
+tidy_glmm <- broom.mixed::tidy(glmm_no_garden, conf.int = FALSE, exponentiate = TRUE)
+
+# Remove the first (intercept) row
+tidy_glmm <- tidy_glmm[-1, ]
+
+# Round the estimates, confidence intervals, and standard errors to 2 decimals
+tidy_glmm$estimate <- round(tidy_glmm$estimate, 2)
+tidy_glmm$std.error <- round(tidy_glmm$std.error, 2)
+tidy_glmm$statistic <- round(tidy_glmm$statistic, 2)
+
+# # Calculate 1-sided p-value, adjusted for 20 parameters
+tidy_glmm$p.value <- round(ifelse(tidy_glmm$p.value / 2 * 20 < 1, tidy_glmm$p.value / 2 * 20, 1), 3)
+
+# change titles of columns 4 to 7 into: OR, Std. Error, Wald test statistic, P-value
+colnames(tidy_glmm)[3:7] <- c("Parameters", "Estimate", "Std. Error", "Wald test statistic", "P-value")
+
+# change the name of rows 17 to 19 of column 3 into: Variance(Flower), Variance(Subplot), Variance(Rater)
+tidy_glmm[17:19, 3] <- c("Variance(Flower)", "Variance(Subplot)", "Variance(Rater)")
+
+# similarly, change the name of rows 3 to 16 of column 3 into: Apathic Acid : day, 
+# Beerse Brew : day, Concentrate of Caducues : day, Distilled of Discovery, 
+# Essence of Epiphanea : day, Four in December : day, Granule of Geheref : day, 
+# Kar-Hamel Mooh : day, Lucifer’s Liquid : day, Noospherol : day, 
+# Oil of John’s Son : day, Powder of Perlimpinpin : day, Spirit of Scienza : day, 
+# Zest of Zen : day
+
+tidy_glmm[3:16, 3] <- c("Apathic Acid : day", "Beerse Brew : day", "Concentrate of Caducues : day", 
+                         "Distilled of Discovery", "Essence of Epiphanea : day", "Four in December : day", 
+                         "Granule of Geheref : day", "Kar-Hamel Mooh : day", "Lucifer’s Liquid : day", 
+                         "Noospherol : day", "Oil of John’s Son : day", "Powder of Perlimpinpin : day", 
+                         "Spirit of Scienza : day", "Zest of Zen : day")
+
+# Remove the first two columns
+
+tidy_glmm <- tidy_glmm[, -c(1,2)]
+
+# square the rows 17-19 of the 2nd column
+tidy_glmm[17:19, 2] <- tidy_glmm[17:19, 2]^2
+
+# export into latex
+
+print(xtable(tidy_glmm, caption = "GLMM model summary",
+             label = "tab:GLMM_parameter_estimates"),
+      include.rownames = FALSE,
+      floating = TRUE,
+      tabular.environment = "tabular",
+      hline.after = c(-1, 0, nrow(tidy_glmm)))
 
 ## Model diagnostics --------------------------------------------------
 
