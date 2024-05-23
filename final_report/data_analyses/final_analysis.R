@@ -286,6 +286,24 @@ model.sel(gee_full, gee_no_compound, gee_no_interaction, gee_only_interaction,
 
 # gee_no_compound is the best model
 
+#### comparing models using anova -----------------------------------------
+
+# gee_no_compound vs gee_no_rater
+anova(gee_no_compound, gee_no_rater) # too heavy
+
+# compare simpler model
+test_rater <- geeglm(fresh ~ rater, 
+                                     data = binary_outcome, 
+                                     id = flowerID, 
+                                     family = binomial, 
+                                     corstr = "exchangeable")
+test_no_rater <- geeglm(fresh ~ 1, 
+                        data = binary_outcome, 
+                        id = flowerID, 
+                        family = binomial, 
+                        corstr = "exchangeable")
+anova(test_rater, test_no_rater) # 0.0001
+
 #### conclusion -----------------------------------------------------------
 
 # compound 6 & 14 are significantly better than water.
@@ -546,16 +564,30 @@ glmm_no_garden_slope <- glmer(fresh ~ day + compound:day + (1 + compound:day|flo
 AICc(glmm_no_garden_slope) # 15524 # shouldn't be added
 BIC(glmm_no_garden_slope) # 15712 # shouldn't be added
 
-summary(glmm_no_garden_slope)
+summary(glmm_no_garden_slope) # this model is way computationally heavy. doesn't work.
 
-##### Doesn't work, will give it a try later! ----------------------------
+### Variance component test & likelihood ratio test -----------------------
 
-### Variance component test --------------------------------------------
-
-#### Compare glmm_no_garden with glmm_no_rater -----------------------
+#### compare glmm_no_garden with glmm_no_rater -----------------------
 
 vt <- varCompTest(glmm_no_interaction, glmm_no_rater)
 # doesn't work for more than one random effect
+
+# compare the model with and without rater
+test_glmm_rater <- glmer(fresh ~ day + compound:day + species + (1|rater),
+                        family = binomial(link = "logit"),
+                        data = binary_outcome, nAGQ = 0)
+test_glmm_no_rater <- glm(fresh ~ day + compound:day + species,
+                        family = binomial(link = "logit"),
+                        data = binary_outcome)
+vt <- varCompTest(test_glmm_rater, test_glmm_no_rater)
+print(vt)
+summary(vt)
+# there's a very strong evidence to support the random effect of rater
+
+#### compare the model with and without garden -----------------------
+
+anova(glmm_full, glmm_no_garden) #garden is not significant # p: 0.63
 
 ### Select the best compound -------------------------
 
