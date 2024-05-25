@@ -21,6 +21,12 @@ library(broom)
 library(broom.mixed)
 library(xtable) # generate output for latex
 library(varTestnlme) # check the variance component
+library(reshape2)
+library(ggplot2)
+library(dplyr)
+library(geepack)
+library(glmmTMB)
+library(lattice)
 
 # Question a: binary outcome for non-gaussian data --------------------------
 
@@ -997,16 +1003,6 @@ ggsave("biplot.svg", plot = biplot, width = 19, height = 12.5, units = "cm")
 
 # Henry's code - question b ---------------------------------------------------
 
-library(lme4)
-library(reshape2)
-library(ggplot2)
-library(dplyr)
-library(geepack)
-library(glmmTMB)
-library(MuMIn)
-library(lattice)
-
-
 #Question b
 gaussianData <- read.csv("gaussian_data_G17.csv")
 gaussianLong <- melt(gaussianData, id.vars = c("Flower_index", "Compound", "Rater", "Type", "Garden", "Subplot"), variable.name = "Day", value.name = "Width")
@@ -1118,38 +1114,37 @@ randomEffectsPlot <- dotplot(ranef(m5, condVar=TRUE))
 print(randomEffectsPlot)
 
 ### re-estimate models for comparison:
-m0 <- lmer(Width ~ Day + Compound (1 | Flower_index) + (1 | Subplot), data = gaussianLong)
+m0 <- lmer(Width ~ Day + Compound + (1 | Flower_index) + (1 | Subplot), data = gaussianLong)
 m1 <- lmer(Width ~ Day*Compound + (1 | Flower_index) + (1 | Subplot), data = gaussianLong)
 m2 <- lmer(Width ~ Day:Compound + Day + (1 | Flower_index) + (1 | Subplot), data = gaussianLong)
 m3 <- lmer(Width ~ Day:Compound + Day + Type + (1 | Flower_index) + (1 | Subplot), data = gaussianLong)
 m4 <- lmer(Width ~ Day:Compound + Day + Type + Garden + (1 | Flower_index) + (1 | Subplot), data = gaussianLong)
 
-m5 <- lmer(Width ~ Day * Compound + Type + (1|Flower_index) + (1|Subplot), data = gaussianLong)
+#m5 <- lmer(Width ~ Day * Compound + Type + (1|Flower_index) + (1|Subplot), data = gaussianLong)
 
-anova(m0, m1)
-anova(m1, m2) # not significantly better, but subplot is left in model anyway
-anova(m2, m3)
-anova(m3, m4)
+lmer_models <- list(m0, m1, m2, m3, m4)
 
-aicm0 <- AIC(m0)
-bicm0 <- BIC(m0)
-r2m0 <- r.squaredGLMM(m0)
+return_sel_criteria <- function(model) {
+  list(
+    AIC = AIC(model),
+    BIC = BIC(model),
+    R2 = r.squaredGLMM(model)
+  )
+}
 
-aicm1 <- AIC(m1)
-bicm1 <- BIC(m1)
-r2m1 <- r.squaredGLMM(m1)
+result_model_list <- list()
+result_criteria <- lapply(lmer_models, return_sel_criteria)
 
-aicm2 <- AIC(m2)
-bicm2 <- BIC(m2)
-r2m2 <- r.squaredGLMM(m2)
+for (i in 1:(length(lmer_models) - 1)) {
+  result_model_list[[i]] <- anova(lmer_models[[i]], lmer_models[[i+1]])
+}
 
-aicm3 <- AIC(m3)
-bicm3 <- BIC(m3)
-r2m3 <- r.squaredGLMM(m3)
 
-aicm4 <- AIC(m4)
-bicm4 <- BIC(m4)
-r2m4 <- r.squaredGLMM(m4)
+#anova(m0, m1)
+#anova(m1, m2) # not significantly better, but subplot is left in model anyway
+#anova(m2, m3)
+#anova(m3, m4)
+
 
 lmer_dat <- data.frame(
   model_name = c(0, 1, 2, 3, 4),
@@ -1158,7 +1153,7 @@ lmer_dat <- data.frame(
     "Compound*Day + FlowerID + SubplotID",
     "Compound:Day + Day + FlowerID + SubplotID",
     "Compound:Day + Day + Species + Type + FlowerID + SubplotID",
-    "Compound:Day + Day + Species + Garden + FlowerID + SubplotID"
+    "Compound:Day + Day + Species + Type + Garden + FlowerID + SubplotID"
   ),
   aic = c(aicm0, aicm1, aicm2, aicm3, aicm4),
   bic = c(bicm0, bicm1, bicm2, bicm3, bicm4),
@@ -1214,11 +1209,10 @@ gaussianLongArr <- gaussianLong |>
                              "Zest of Zen"
                            )
   ))
-# 
-m3 <- lmer(Width ~ Day:Compound + Day + Type
+# Note: notation of nested random effect (1 | Subplot / Flower_index) gives identical result
+m3 <- lmerTest::lmer(Width ~ Day:Compound + Day + Type
            + (1 | Flower_index) + (1 | Subplot), data = gaussianLongArr)
 lmer_gaussian <- m3
-
 
 tidy_lmer <- broom.mixed::tidy(lmer_gaussian) %>%
   rename(
@@ -1230,6 +1224,9 @@ tidy_lmer <- broom.mixed::tidy(lmer_gaussian) %>%
     `p-value` = p.value
   ) %>%
   filter(!is.na(`Degrees of Freedom`)) %>%  # Exclude random effects
+  # sigma_FlowerIndex = 0.395
+  # sigma_Subplot = 0.029
+  # sigma_Residual = 0.167
   dplyr::select(-group, -effect) %>%  # Drop unnecessary columns
   mutate(
     #Term = sub("^[^:]*:", "", Term),  # Remove variable name and keep only the label
@@ -1287,16 +1284,21 @@ lmer_gaussian <- m3
 summary(lmer_gaussian)
 
 # compounds 2, 3, 5, 6, 9,11, 13, 14, 15 show smaller width over time compared to water
-# --> contrast for the 4 largest coefficients
+# --> contrast for the 4 largest coefficients 2, 3, 5, 6
 
-
-negative_compounds <- c("Compound2", "Compound3", "Compound5", "Compound6")
-
-margmeans <- emmeans(lmer_gaussian, ~ Compound * Day)
+margmeans <- emmeans(lmer_gaussian, ~ Compound * Day, pbkrtest.limit = 3660)
 # margmeans <- emmeans(lmer_gaussian, ~ Compound | Day, pbkrtest.limit = 3660)
 
-contrasts <- emmeans::contrast(margmeans, method = "pairwise", simple = "each", combine = TRUE, 
-                               adjust = "bonferroni")
+cont = list(c(0,1,-1,0,0,0,0,0,0,0,0,0,0,0,0),
+            c(0,1,0,0,-1,0,0,0,0,0,0,0,0,0,0),
+            c(0,1,0,0,0,-1,0,0,0,0,0,0,0,0,0),
+            c(0,0,1,0,-1,0,0,0,0,0,0,0,0,0,0),
+            c(0,0,1,0,0,-1,0,0,0,0,0,0,0,0,0),
+            c(0,0,0,0,1,-1,0,0,0,0,0,0,0,0,0))
+contrasts <- contrast(margmeans, method = cont, adjust = "bonferroni")
+
+#contrasts <- emmeans::contrast(margmeans, method = "pairwise", simple = "each", combine = TRUE, 
+#                               adjust = "bonferroni")
 
 negative_compounds <- c("Apathic Acid - Beerse Brew", 
                         "Apathic Acid - Distilled of Discovery", 
