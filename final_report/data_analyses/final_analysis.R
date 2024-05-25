@@ -91,8 +91,8 @@ Box_plot_total <- non_gaussian_data %>%
                               "Zest of Zen")) +
   ylab("Total vase days") +
   theme(plot.title = element_text(hjust = 0.5, size = 8, face = "bold"),
-        axis.title = element_text(size = 7),
-        axis.text = element_text(size = 6),
+        axis.title = element_text(size = 11), #adjust text size 240524
+        axis.text = element_text(size = 10),
         axis.text.x = element_text(angle = 45, hjust = 1), # Rotate x-axis text
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
@@ -172,10 +172,10 @@ sum_binary <- sum_binary_outcome %>%
   xlab("Day") +
   scale_color_viridis_d(labels = compound_labels, option = "D") +
   #scale_color_manual() +
-  theme(axis.title = element_text(size = 8, family = "sans"),
-        axis.text = element_text(size = 8, family = "sans"),
-        legend.title = element_text(size = 6, family = "sans"),
-        legend.text = element_text(size = 6, family = "sans"),
+  theme(axis.title = element_text(size = 11, family = "sans"),
+        axis.text = element_text(size = 10, family = "sans"),
+        legend.title = element_text(size = 9, family = "sans"),
+        legend.text = element_text(size = 9, family = "sans"),
         panel.grid.minor = element_blank(),
         panel.grid.major = element_blank(),
         legend.position = "right",
@@ -521,6 +521,9 @@ BIC(glmm_no_garden) # 15632 # can be removed
 
 summary(glmm_no_garden)
 
+vcov(glmm_no_garden) # variance-covariance matrix
+print(glmm_no_garden, correlation = TRUE) # correlation matrix
+
 #### remove interaction ------------------------------------------------
 glmm_no_interaction <- glmer(fresh ~ compound + day + species + (1|flowerID) + (1|subplotID) + (1|rater),
                              family = binomial(link = "logit"),
@@ -749,6 +752,24 @@ gaussian_long <- gaussian_long |>
   rename(Width = T)
 
 View(gaussian_long)
+
+# Check gaussian data missingness
+gaussian_long_NA <- gaussian_data |> 
+  pivot_longer(
+    cols = !(Flower_index:Subplot), 
+    names_to = c(".value", "Day"), 
+    names_sep = "_", 
+    values_drop_na = FALSE
+  )
+
+sum(is.na(gaussian_long_NA$T))/nrow(gaussian_long_NA)*100 #3.17% missing data
+
+# Group data by subplot and species, and count the number of flowers
+strata <- gaussian_long_NA %>%
+  group_by(Subplot, Type, Compound) %>%
+  summarise(n = n()) 
+View(strata)
+
 
 ## Some EDA ---------------------------------------------------------------
 
