@@ -27,6 +27,7 @@ library(dplyr)
 library(geepack)
 library(glmmTMB)
 library(lattice)
+library(randomcoloR) # for more distinguisable colors
 
 # Question a: binary outcome for non-gaussian data --------------------------
 
@@ -168,6 +169,27 @@ compound_labels = c("Distilled Water",
              "Powder of Perlimpinpin",
              "Spirit of Scienza",
              "Zest of Zen")
+sum_binary_outcome$compound <-
+  factor(
+    sum_binary_outcome$compound,
+    labels = c(
+      "Distilled Water",
+      "Apathic Acid",
+      "Beerse Brew",
+      "Concentrate of Caducues",
+      "Distilled of Discovery",
+      "Essence of Epiphanea",
+      "Four in December",
+      "Granule of Geheref",
+      "Kar-Hamel Mooh",
+      "Lucifer’s Liquid",
+      "Noospherol",
+      "Oil of John’s Son",
+      "Powder of Perlimpinpin",
+      "Spirit of Scienza",
+      "Zest of Zen"
+    )
+  )
 
 sum_binary <- sum_binary_outcome %>%
   ggplot(aes(day, percentage, color = as.factor(compound))) + 
@@ -176,8 +198,8 @@ sum_binary <- sum_binary_outcome %>%
   labs(color = "Compound") +
   ylab("Percentage of fresh flower") +
   xlab("Day") +
-  scale_color_viridis_d(labels = compound_labels, option = "D") +
-  #scale_color_manual() +
+  #scale_color_viridis_d(labels = compound_labels, option = "D") +
+  scale_color_manual(values = palette) + # palette created below in flowerwidth_compound plot
   theme(axis.title = element_text(size = 11, family = "sans"),
         axis.text = element_text(size = 10, family = "sans"),
         legend.title = element_text(size = 9, family = "sans"),
@@ -190,11 +212,13 @@ sum_binary <- sum_binary_outcome %>%
 sum_binary
 
 # export the plot
-setwd("./eda_plots")
-ggsave("sum_binary.png", plot = sum_binary, width = 19, height = 12, units = "cm")
+#setwd("./eda_plots")
+setwd("./final_report/data_analyses/eda_plots")
+ggsave("sum_binary.png", plot = sum_binary, width = 19, height = 10, units = "cm")
 # go back to the previous wd
 Path = getwd()
-setwd(dirname(Path))
+#setwd(dirname(Path))
+setwd(dirname(dirname(dirname(Path))))
 
 ## GEE ---------------------------------------------------------------
 # only clustered within flowerID
@@ -431,7 +455,7 @@ webshot("tab_gee_qic.html", "tab_qic.pdf")
 
 #### Tidy table for parameter estimates --------------------------------
 
-tidy_gee <- tidy(gee_no_compound_ar, conf.int = TRUE, exponentiate = TRUE)
+tidy_gee <- tidy(gee_no_compound_ar, conf.int = TRUE, exponentiate = TRUE, conf.level = 0.9) # to calculate 1-sided p-value
 
 # Filter out rows corresponding to compound, subplotID, and rater effects
 tidy_gee_filtered <- tidy_gee %>%
@@ -452,6 +476,9 @@ tidy_gee_filtered$p.value <- ifelse(tidy_gee_filtered$p.value * 44 < 1, tidy_gee
 
 # Round the p-values to 3 decimals
 tidy_gee_filtered$p.value <- round(tidy_gee_filtered$p.value, 3)
+
+# remove first row
+tidy_gee_filtered <- tidy_gee_filtered[-1,]
 
 # Create the summary table excluding the filtered rows
 tab_gee <- tidy_gee_filtered %>%
@@ -899,21 +926,52 @@ gaus_Subplot <- gaussian_long %>%
     N         = n()
   )
 
-# Flower Width by Compound for T0-T20
+#### Flower Width by Compound for T0-T20 -----------------------------------
 ggplot(data = gaus_Comp) + 
   geom_line(mapping = aes(x = time, group = Compound, y = MeanWidth))
 ## with Colours
+compound_labels = c("Distilled Water",
+                    "Apathic Acid",
+                    "Beerse Brew",
+                    "Concentrate of Caducues",
+                    "Distilled of Discovery",
+                    "Essence of Epiphanea",
+                    "Four in December",
+                    "Granule of Geheref",
+                    "Kar-Hamel Mooh",
+                    "Lucifer’s Liquid",
+                    "Noospherol",
+                    "Oil of John’s Son",
+                    "Powder of Perlimpinpin",
+                    "Spirit of Scienza",
+                    "Zest of Zen")
+# color panel
+set.seed(123)
+palette <- unname(distinctColorPalette(15))
+# plot
 flowerwidth_compound <- ggplot(data = gaus_Comp, aes(x = Day, y = MeanWidth, group = Compound)) + 
-  geom_line(aes(col = Compound), size = 0.3) +
-  geom_point(aes(col = Compound), size = 1.9) +
+  geom_line(aes(col = Compound), size = 1) +
+  geom_point(aes(col = Compound), size = 1) +
   theme_minimal() +
   ylab("Mean flower width (cm)") +
-  theme(axis.title = element_text(size = 9, family = "sans"),
-        axis.text = element_text(size = 9, family = "sans"),
-        legend.title = element_text(size = 8, family = "sans"),
-        legend.text = element_text(size = 8, family = "sans"),
-        panel.grid.minor = element_blank())
-ggsave("flowerwidth_compound.png", plot = flowerwidth_compound, width = 12, height = 11, units = "cm")
+  #scale_color_viridis_d(option = "D") +
+  scale_color_manual(values = palette) +
+  theme(axis.title = element_text(size = 11, family = "sans"),
+        axis.text = element_text(size = 10, family = "sans"),
+        legend.title = element_text(size = 9, family = "sans"),
+        legend.text = element_text(size = 9, family = "sans"),
+        panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+        legend.position = "right",
+        legend.margin = margin(0,0,0,0),
+        legend.box.margin = margin(-1,-1,-1,-1))
+flowerwidth_compound
+# export the plot
+setwd("./final_report/data_analyses/eda_plots")
+ggsave("flowerwidth_compound.png", flowerwidth_compound, width = 19, height = 10, dpi = 300, unit = "cm")
+# return to the previous directory
+Path <- getwd()
+setwd(dirname((dirname(dirname(Path)))))
 
 # --> Compound 6 hast the smallest Width (considered the freshest at T20)
 
