@@ -1101,6 +1101,28 @@ m4 <- lmer(Width ~ Day:Compound + Day + Type + Garden + (1 | Flower_index) + (1 
 
 #m5 <- lmer(Width ~ Day * Compound + Type + (1|Flower_index) + (1|Subplot), data = gaussianLong)
 
+aicm0 <- AIC(m0)
+aicm1 <- AIC(m1)
+aicm2 <- AIC(m2)
+aicm3 <- AIC(m3)
+aicm4 <- AIC(m4)
+
+bicm0 <- BIC(m0)
+bicm1 <- BIC(m1)
+bicm2 <- BIC(m2)
+bicm3 <- BIC(m3)
+bicm4 <- BIC(m4)
+
+### Testing for random slopes
+m_ri <- lmerTest::lmer(Width ~ Day:Compound + Day + Type
+                                   + (1 | Flower_index), REML = F, data = gaussianLongArr)
+
+m_rs <- lmerTest::lmer(Width ~ Day:Compound + Day + Type # fails to converge
+                       +            + (1 + Day | Flower_index), REML = F, data = gaussianLongArr)
+
+#m_rs <- lmerTest::lmer(Width ~ Day:Compound + Day + Type # fails to converge
+ #                                  + (1 + Day:Compound | Flower_index), REML = F, data = gaussianLongArr)
+
 lmer_models <- list(m0, m1, m2, m3, m4)
 
 return_sel_criteria <- function(model) {
